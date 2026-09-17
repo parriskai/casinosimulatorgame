@@ -14,6 +14,7 @@ pub struct Window{
 
     gc: GraphicsControl,
     glfw: Glfw,
+    t: f64
 } impl Window {
     pub fn create() -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
@@ -27,7 +28,8 @@ pub struct Window{
                 pwindow,
                 event,
                 surface,
-                config
+                config,
+                t: 0.
             }
         )
     }
@@ -81,7 +83,7 @@ pub struct Window{
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: capabilities.alpha_modes[0],
             view_formats: vec![],
-            desired_maximum_frame_latency: 2,
+            desired_maximum_frame_latency: 0,
             color_space: wgpu::SurfaceColorSpace::Auto,
         };
 
@@ -90,12 +92,31 @@ pub struct Window{
         Ok((surface, config))
     }
 
+    fn handle_events(&mut self){
+        self.glfw.poll_events();
+
+        let events: Vec<_> = glfw::flush_messages(&self.event).collect();
+        
+        for event in events{
+            match event.1 {
+                WindowEvent::Close => {
+                    self.pwindow.set_should_close(true)
+                }
+                e => {
+                    tracing::warn!("Unhandled window event {e:?}");
+                }
+            }
+        }
+    }
+
     fn render(&mut self){
+        self.t += 1.;
         // GET Render Target
         let output = match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(tex) => tex,
             CurrentSurfaceTexture::Occluded => return,
-            _ => panic!("Failed to acquire surface texture"),
+            CurrentSurfaceTexture::Timeout => return,
+            cst => panic!("Failed to acquire surface texture: {cst:?}"),
         };
 
         // Create Command Encoder
@@ -121,9 +142,9 @@ pub struct Window{
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(
                                     wgpu::Color {
-                                        r: 0.,
+                                        r: self.t.cos().abs(),
                                         g: 0.,
-                                        b: 0.1,
+                                        b: self.t.sin().abs(),
                                         a: 1.0,
                                     },
                                 ),
@@ -144,8 +165,14 @@ pub struct Window{
     }
 
     pub fn frame(&mut self){
+        self.handle_events();
+
         self.render();
         
-        self.pwindow.swap_buffers();
+        //self.pwindow.swap_buffers();
+    }
+
+    pub fn should_close(&self) -> bool{
+        self.pwindow.should_close()
     }
 }

@@ -1,3 +1,5 @@
+use wgpu::{BackendOptions, Backends, InstanceDescriptor, InstanceFlags, MemoryBudgetThresholds};
+
 use crate::prelude::*;
 
 #[derive(Clone)]
@@ -8,7 +10,14 @@ pub struct GraphicsControl{
     pub queue: wgpu::Queue
 } impl GraphicsControl {
     pub async fn create() -> GResult<GraphicsControl>{
-        let instance =wgpu::Instance::default();
+        let instance =wgpu::Instance::new(InstanceDescriptor {
+            backends: Backends::all(),
+            flags: Default::default(),
+            memory_budget_thresholds: Default::default(),
+            backend_options: Default::default(),
+            display: None,
+        });
+
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,

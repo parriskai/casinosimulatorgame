@@ -11,8 +11,10 @@ pub struct Game{
     }
 
     pub fn run(&mut self) -> GResult<()>{
-        loop{
+        while !self.window.should_close(){
             self.window.frame();
         }
+
+        Ok(())
     }
 }

@@ -1,6 +1,8 @@
-use csg::{prelude::*, game::Game};
+use csg::{prelude::*, game::Game, logging::init_tracing};
 
 fn main() -> GResult<()>{
+    init_tracing();
+    
     let mut game = Game::create()?;
     game.run()
 }
