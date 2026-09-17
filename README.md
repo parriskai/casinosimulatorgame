@@ -3,8 +3,13 @@
 
 **TBD**
 
+## Known bugs
+
+- Atlas rendering doesnt include depth so randomly the two images swap. Run it again until it works
+
 ## Authors
 
 -  Kai Parris (Programmer)
-- Evan Wright (Composer)
 - Charles Rothbaum (Programmer)
+- Evan Wright (Composer)
+- Adrian (Artist)

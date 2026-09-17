@@ -1,9 +1,10 @@
 use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+use slotmap::Key;
 use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
 
 use super::graphicscontrol::GraphicsControl;
-use crate::prelude::*;
+use crate::{graphics::{UvBox, asset_mgr::TextureKey, renderer::Rendeerer}, prelude::*};
 
 pub struct Window{
     surface: Surface<'static>,
@@ -12,32 +13,36 @@ pub struct Window{
 
     pwindow: PWindow,
 
-    gc: GraphicsControl,
+    renderer: Rendeerer,
     glfw: Glfw,
-    t: f64
+
+    t: TextureKey
 } impl Window {
     pub fn create() -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
         let gc = pollster::block_on(GraphicsControl::create())?;
         let (pwindow, event) = Self::create_glfw_window(&mut glfw)?;
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
+        let mut renderer = Rendeerer::create(gc, surface.get_configuration().unwrap().format);
+
+        let t = renderer.asset_manager.create_texture_from_bytes(include_bytes!("../../../built_assets/atlas.png"), "ATLAS".into());
         Ok(
             Window {
                 glfw,
-                gc,
                 pwindow,
                 event,
                 surface,
                 config,
-                t: 0.
+                renderer,
+                t
             }
         )
     }
 
     fn create_glfw_window(glfw: &mut glfw::Glfw) -> GResult<(PWindow, glfw::GlfwReceiver<(f64, WindowEvent)>)>{
         let (mut window, events) = glfw.create_window(
-            512,
-            512,
+            704,
+            318,
             "Casino Simulator Game",
             glfw::WindowMode::Windowed).ok_or(
                 GError::GLFWError(
@@ -101,7 +106,13 @@ pub struct Window{
             match event.1 {
                 WindowEvent::Close => {
                     self.pwindow.set_should_close(true)
-                }
+                },
+                WindowEvent::FramebufferSize(_, _) => {
+                    let (w, h) = self.pwindow.get_framebuffer_size();
+                    self.config.width = w.max(1) as u32;
+                    self.config.height = h.max(1) as u32;
+                    self.surface.configure(&self.renderer.gc.device, &self.config);
+                },
                 e => {
                     tracing::warn!("Unhandled window event {e:?}");
                 }
@@ -110,7 +121,6 @@ pub struct Window{
     }
 
     fn render(&mut self){
-        self.t += 1.;
         // GET Render Target
         let output = match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(tex) => tex,
@@ -120,7 +130,7 @@ pub struct Window{
         };
 
         // Create Command Encoder
-        let mut encoder = self.gc.device.create_command_encoder(
+        let mut encoder = self.renderer.gc.device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor {
                 label: Some("Main Encoder"),
             },
@@ -142,9 +152,9 @@ pub struct Window{
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(
                                     wgpu::Color {
-                                        r: self.t.cos().abs(),
+                                        r: 1.,
                                         g: 0.,
-                                        b: self.t.sin().abs(),
+                                        b: 1.,
                                         a: 1.0,
                                     },
                                 ),
@@ -158,10 +168,13 @@ pub struct Window{
                     multiview_mask: None,
                 },
             ).forget_lifetime();
+            self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, nalgebra::Matrix4::identity());
+            self.renderer.atlas_renderer.draw_atlas(self.t, UvBox::FULL, nalgebra::Matrix4::identity());
+            self.renderer.finish(&mut render_pass);
         }
 
-        self.gc.queue.submit(Some(encoder.finish()));
-        self.gc.queue.present(output);
+        self.renderer.gc.queue.submit(Some(encoder.finish()));
+        self.renderer.gc.queue.present(output);
     }
 
     pub fn frame(&mut self){
