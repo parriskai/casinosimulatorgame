@@ -1,6 +1,4 @@
 # WCU 26' Casino Simulator Game
----
-
 ## Summary
 
 **TBD**
