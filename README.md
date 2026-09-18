@@ -5,9 +5,12 @@
 
 ## Known bugs
 
-- Atlas renderer
-  - [x] Atlas rendering doesnt include depth so randomly the two images swap. Run it again until it works (FIXED: Added depth test)
-  - [ ] Atlas rendering doesnt sort by layer causing alpha mixing problems
+- Performance
+  - [ ] Window lags when resizing
+- Rendering
+  - Atlas renderer
+    - [x] Atlas rendering doesnt include depth so randomly the two images swap. Run it again until it works (FIXED: Added depth test)
+    - [ ] Atlas rendering doesnt sort by layer causing alpha mixing problems
 
 ## Authors
 
