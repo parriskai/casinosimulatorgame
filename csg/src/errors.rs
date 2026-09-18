@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// An error originating or related to GLFW
 #[derive(Error, Debug)]
 pub enum GLFWError {
     #[error("Failed to init ({0})")]
@@ -9,6 +10,7 @@ pub enum GLFWError {
     #[error("Handle error ({0})")]
     HandleError(raw_window_handle::HandleError)
 }
+
 impl Into<GError> for glfw::InitError {
     fn into(self) -> GError {
         GError::GLFWError(GLFWError::InitError(self))
@@ -21,6 +23,7 @@ impl Into<GError> for raw_window_handle::HandleError {
     }
 }
 
+/// An error originating or related to WGPU
 #[derive(Error, Debug)]
 pub enum WGPUError{
     #[error("Failed to request an adapter ({0})")]
@@ -39,7 +42,7 @@ impl Into<GError> for wgpu::RequestDeviceError{
     }
 }
 
-
+/// General Error type
 #[derive(Error, Debug)]
 pub enum GError{
     #[error("GLFW Error ({0}))")]
@@ -48,9 +51,12 @@ pub enum GError{
     WGPUError(WGPUError)
 }
 
+/// A thin wrapper arround rusts Result, returning either sucess or a game error
 pub type GResult<T> = Result<T, GError>;
 
+/// Helper trait, into doesnt really work for our use case so we have our own trait
 pub trait GeneralizeError<T, E>{
+    /// Generalize a sub error into a broad Game Error
     fn g_err(self) -> GResult<T>;
 }
 

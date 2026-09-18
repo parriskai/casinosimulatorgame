@@ -1,13 +1,15 @@
-use std::sync::Arc;
-
-use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
+use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, renderer::Renderer, textren::{Font, FontTextureAtlas}}, prelude::*, utils::Transform};
+use nalgebra::Vector2;
+// Were going to let this slide
+#[allow(deprecated)]
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use slotmap::Key;
 use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
-
+use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
 use super::graphicscontrol::GraphicsControl;
-use crate::{graphics::{UvBox, asset_mgr::TextureKey, renderer::Rendeerer, textren::{Font, FontTextureAtlas}}, prelude::*, utils::Transform};
+use std::sync::Arc;
 
+/// The window, and everything on it
 pub struct Window{
     surface: Surface<'static>,
     config: SurfaceConfiguration,
@@ -15,17 +17,21 @@ pub struct Window{
 
     pwindow: PWindow,
 
-    renderer: Rendeerer,
+    pub renderer: Renderer,
     glfw: Glfw,
 
     font: Arc<Font>
 } impl Window {
     pub fn create() -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
-        let gc = pollster::block_on(GraphicsControl::create())?;
+
         let (pwindow, event) = Self::create_glfw_window(&mut glfw)?;
+
+        // Saftey: one window means this is the first call
+        let gc = pollster::block_on(unsafe{GraphicsControl::create(pwindow.get_framebuffer_size())})?;
+
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
-        let mut renderer = Rendeerer::create(gc, surface.get_configuration().unwrap().format);
+        let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format);
 
         let font_key = renderer.asset_manager.create_font(
             FontTextureAtlas::from_included(include_bytes!("../../../generated_assets/atlas.png"),
@@ -75,8 +81,6 @@ pub struct Window{
         };
 
         let capabilities = surface.get_capabilities(&gc.adapter);
-
-        println!("capabilities: {capabilities:#?}");
         
         let format = capabilities
             .formats
@@ -112,14 +116,29 @@ pub struct Window{
         for event in events{
             match event.1 {
                 WindowEvent::Close => {
+                    tracing::info!("Window Close Requested");
                     self.pwindow.set_should_close(true)
                 },
+
                 WindowEvent::FramebufferSize(_, _) => {
                     let (w, h) = self.pwindow.get_framebuffer_size();
-                    self.config.width = w.max(1) as u32;
-                    self.config.height = h.max(1) as u32;
+                    let (w, h) = (w.max(1) as u32, h.max(1) as u32);
+                    tracing::info!("Framebuffer set to {w}x{h}");
+
+                    self.config.width = w;
+                    self.config.height = h;
                     self.surface.configure(&self.renderer.gc.device, &self.config);
+                    self.renderer.set_dim((w, h));
                 },
+
+                WindowEvent::Size(_, _) => {
+                    // We already handle FramebufferSize which is more acurate for what we need it for
+                }
+
+                WindowEvent::Refresh => {
+                    // Alredy runneing every frame
+                }
+                
                 e => {
                     tracing::warn!("Unhandled window event {e:?}");
                 }
@@ -169,14 +188,22 @@ pub struct Window{
                             },
                         },
                     )],
-                    depth_stencil_attachment: None,
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.renderer.depth_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
                     timestamp_writes: None,
                     occlusion_query_set: None,
                     multiview_mask: None,
                 },
             ).forget_lifetime();
-            //self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, Transform::flatten_to_back());
-            self.font.write_text("Hello, World!", Transform::Scale(1./ 5., 1. / 5., 0.).then(Transform::Translate(-0.8, 0., 0.)), &mut self.renderer.atlas_renderer);
+            let ss = self.pwindow.get_framebuffer_size();
+            self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::CLEAR));
+            self.font.write_text("Hello, World!", Vector2::zeros(), 1., RenderLayer::TOP, &mut self.renderer.atlas_renderer);
 
             self.renderer.finish(&mut render_pass);
         }

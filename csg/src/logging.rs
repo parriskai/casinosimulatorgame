@@ -1,10 +1,10 @@
 use std::fs::OpenOptions;
-use tracing::Level;
-use tracing_subscriber::{
-    EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt,
-};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
+/// Initalize tracing, SHOULD ONLY BE CALLED ONCE
+/// IDK what happens if you call this twice so just dont
 pub fn init_tracing() {
+    // Log file
     let file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -24,7 +24,7 @@ pub fn init_tracing() {
         )
         .with(
             EnvFilter::from_default_env()
-                .add_directive(tracing::Level::DEBUG.into())
+                .add_directive(tracing::Level::INFO.into())
         )
         .init();
 }

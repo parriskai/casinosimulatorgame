@@ -4,5 +4,7 @@ fn main() -> GResult<()>{
     init_tracing();
     
     let mut game = Game::create()?;
+    game.log_info();
+    
     game.run()
 }

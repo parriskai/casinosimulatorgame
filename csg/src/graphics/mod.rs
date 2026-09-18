@@ -7,6 +7,7 @@ pub mod window;
 
 use bytemuck::{Pod, Zeroable};
 use serde::Deserialize;
+use strum::EnumCount;
 
 #[repr(C)]
 #[derive(Clone, Copy, Deserialize, Pod, Zeroable)]
@@ -22,4 +23,11 @@ pub struct UvBox{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("UvBox[({}, {}) -> ({}, {})]", self.u0, self.v0, self.u1, self.v1))
     }
+}
+
+#[repr(u8)]
+#[derive(EnumCount, Clone, Copy)]
+pub enum RenderLayer{
+    CLEAR,
+    TOP,
 }

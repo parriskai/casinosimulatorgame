@@ -19,7 +19,7 @@ pub struct GPUTexture{
         let (width, height) = rgba.dimensions();
 
         let texture = gc.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some(name.clone()),
+            label: Some(name),
             size: wgpu::Extent3d {
                 width,
                 height,

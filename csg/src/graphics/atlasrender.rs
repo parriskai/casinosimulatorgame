@@ -1,10 +1,11 @@
-use std::{collections::HashMap, hash::RandomState};
+use crate::{graphics::{RenderLayer, UvBox, asset_mgr::{AssetManager, TextureKey, TextureOrMissing}, graphicscontrol::GraphicsControl}, utils::{IntoGPUMatrix, coordinate_transform}};
+use std::collections::HashMap;
 
 use bytemuck::{Pod, Zeroable};
-use nalgebra::Matrix4;
+use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
+use tracing::instrument::WithSubscriber;
 use wgpu::util::DeviceExt;
 
-use crate::{graphics::{UvBox, asset_mgr::{AssetManager, TextureKey, TextureOrMissing}, graphicscontrol::GraphicsControl}, utils::IntoGPUMatrix};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -46,6 +47,8 @@ pub struct AtlasRenderer{
     index_buffer: wgpu::Buffer,
 
     buckets: HashMap<TextureKey, AtlasBucket>,
+
+    world_to_cvv: Matrix4<f32>,
 
     bind_group_layout: wgpu::BindGroupLayout,
 } impl AtlasRenderer{
@@ -184,7 +187,13 @@ pub struct AtlasRenderer{
                     ..Default::default()
                 },
 
-                depth_stencil: None,
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
 
                 multisample: wgpu::MultisampleState::default(),
 
@@ -194,17 +203,19 @@ pub struct AtlasRenderer{
             },
         );
 
+        let world_to_cvv = gc.get_world_to_cvv();
         AtlasRenderer{
             gc,
             pipeline,
             vertex_buffer,
             index_buffer,
             buckets: HashMap::new(),
+            world_to_cvv,
             bind_group_layout,
         }
     }
 
-    pub fn draw_atlas<T: IntoGPUMatrix<RAW = [[f32; 4]; 4]>>(&mut self, tkey: TextureKey, uv: UvBox, transform: T) {
+    pub fn draw_atlas(&mut self, tkey: TextureKey, uv: UvBox, position: (Vector2<f32>, Vector2<f32>, RenderLayer)) {
         let bucket = self
             .buckets
             .entry(tkey)
@@ -212,11 +223,21 @@ pub struct AtlasRenderer{
                 instances: Vec::new(),
                 instance_buffer: None,
             });
-
+        
+        let transform = self.world_to_cvv * coordinate_transform(
+                Vector3::new(-1., -1., 0.),
+                Vector3::new(1., 1., 1.),
+                Vector3::new(position.0.x, position.0.y, position.2 as u8 as f32),
+                Vector3::new(position.1.x, position.1.y, position.2 as u8 as f32));
+        
         bucket.instances.push(AtlasInstance {
             transform: transform.into_gmat(),
             uv
         });
+    }
+
+    pub fn update_world_to_cvv(&mut self){
+        self.world_to_cvv = self.gc.get_world_to_cvv();
     }
 
     pub fn render_all<'a>(&'a mut self, render_pass: &mut wgpu::RenderPass<'a>, asset_mgr: &AssetManager) {

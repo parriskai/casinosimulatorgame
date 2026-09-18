@@ -1,8 +1,9 @@
 use std::{collections::HashMap, io::Cursor, sync::Arc};
 
+use nalgebra::Vector2;
 use serde::Deserialize;
 
-use crate::{graphics::{UvBox, asset_mgr::{GPUTexture, TextureKey}, atlasrender::AtlasRenderer}, utils::{IntoGPUMatrix, Transform}};
+use crate::{graphics::{RenderLayer, UvBox, asset_mgr::{GPUTexture, TextureKey}, atlasrender::AtlasRenderer}, utils::{IntoGPUMatrix, Transform}};
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct AtlasGlyph{
@@ -50,7 +51,8 @@ pub struct FontTextureAtlas{
 pub struct Font{
     atlas: TextureKey,
     mapping: HashMap<char, AtlasGlyph>,
-    missing: AtlasGlyph
+    missing: AtlasGlyph,
+    size: f32
 } impl Font{
     pub fn create(json: AtlasJSON, atlas: TextureKey) -> Font{
         let mut mapping = HashMap::with_capacity(json.glyphs.len());
@@ -83,16 +85,18 @@ pub struct Font{
         Font{
             atlas,
             mapping,
-            missing
+            missing,
+            size: json.font_size as f32
         }
     }
 
-    pub fn write_text(&self, text: &str, transform: Transform, ar: &mut AtlasRenderer){
-        let mut offset = Transform::Identity;
+    pub fn write_text(&self, text: &str, mut pos: Vector2<f32>, scale: f32, layer: RenderLayer, ar: &mut AtlasRenderer){
         for chr in text.chars(){
             let glyph = self.mapping.get(&chr).unwrap_or(&self.missing);
-            ar.draw_atlas(self.atlas, glyph.uvbox, offset.then(Transform::Translate(-glyph.offset_x as f32 / 24., -glyph.offset_y as f32 / 24., 0.)).then(transform));
-            offset = offset.then(Transform::Translate(glyph.advance / 24., 0., 0.))
+            let topleft = pos + Vector2::new(glyph.offset_x as f32, glyph.offset_y as f32);
+
+            ar.draw_atlas(self.atlas, glyph.uvbox, (topleft, topleft + Vector2::new(glyph.glyph_width as f32, glyph.glyph_height as f32) * scale, layer));
+            pos.x += glyph.advance / 2. * scale;
         }
     }
 }
