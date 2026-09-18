@@ -103,7 +103,7 @@ def main():
         "font_size": args.size,
         "atlas_width": atlas_width,
         "atlas_height": atlas_height,
-        "glyphs": {},
+        "glyphs": [],
     }
 
     for index, glyph in enumerate(glyphs):
@@ -132,7 +132,7 @@ def main():
             fill=(255, 255, 255, 255),
         )
 
-        metadata["glyphs"][str(ord(char))] = {
+        metadata["glyphs"].append({
             "char": char,
 
             # Pixel rectangle in the atlas.
@@ -157,7 +157,7 @@ def main():
             "v0": cell_y / atlas_height,
             "u1": (cell_x + cell_width) / atlas_width,
             "v1": (cell_y + cell_height) / atlas_height,
-        }
+        })
 
     atlas.save(args.output)
 

@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use slotmap::Key;
 use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
 
 use super::graphicscontrol::GraphicsControl;
-use crate::{graphics::{UvBox, asset_mgr::TextureKey, renderer::Rendeerer}, prelude::*};
+use crate::{graphics::{UvBox, asset_mgr::TextureKey, renderer::Rendeerer, textren::{Font, FontTextureAtlas}}, prelude::*, utils::Transform};
 
 pub struct Window{
     surface: Surface<'static>,
@@ -16,7 +18,7 @@ pub struct Window{
     renderer: Rendeerer,
     glfw: Glfw,
 
-    t: TextureKey
+    font: Arc<Font>
 } impl Window {
     pub fn create() -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
@@ -25,7 +27,12 @@ pub struct Window{
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
         let mut renderer = Rendeerer::create(gc, surface.get_configuration().unwrap().format);
 
-        let t = renderer.asset_manager.create_texture_from_bytes(include_bytes!("../../../built_assets/atlas.png"), "ATLAS".into());
+        let font_key = renderer.asset_manager.create_font(
+            FontTextureAtlas::from_included(include_bytes!("../../../generated_assets/atlas.png"),
+            include_str!("../../../generated_assets/atlas.json")), "KiwiSoda".into());
+
+        let font = renderer.asset_manager.font_by_id(font_key).inner();
+        
         Ok(
             Window {
                 glfw,
@@ -34,7 +41,7 @@ pub struct Window{
                 surface,
                 config,
                 renderer,
-                t
+                font,
             }
         )
     }
@@ -152,9 +159,9 @@ pub struct Window{
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(
                                     wgpu::Color {
-                                        r: 1.,
+                                        r: 0.,
                                         g: 0.,
-                                        b: 1.,
+                                        b: 0.,
                                         a: 1.0,
                                     },
                                 ),
@@ -168,8 +175,9 @@ pub struct Window{
                     multiview_mask: None,
                 },
             ).forget_lifetime();
-            self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, nalgebra::Matrix4::identity());
-            self.renderer.atlas_renderer.draw_atlas(self.t, UvBox::FULL, nalgebra::Matrix4::identity());
+            //self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, Transform::flatten_to_back());
+            self.font.write_text("Hello, World!", Transform::Scale(1./ 5., 1. / 5., 0.).then(Transform::Translate(-0.8, 0., 0.)), &mut self.renderer.atlas_renderer);
+
             self.renderer.finish(&mut render_pass);
         }
 

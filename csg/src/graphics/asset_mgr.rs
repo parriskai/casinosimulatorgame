@@ -1,10 +1,10 @@
 use std::{collections::HashMap, io::Cursor, sync::Arc};
 
 use image::DynamicImage;
-use slotmap::SlotMap;
+use slotmap::{Key, SlotMap};
 use wgpu::BindGroup;
 
-use crate::graphics::{graphicscontrol::GraphicsControl, textren::{Font, FontTextureAtlas}};
+use crate::graphics::{graphicscontrol::GraphicsControl, textren::{AtlasJSON, Font, FontOrMissing, FontTextureAtlas}};
 
 // hardcoded
 const MISSING_TEXTURE: &[u8; 120] = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10\x08\x06\x00\x00\x00\x1f\xf3\xffa\x00\x00\x00\x01sRGB\x00\xae\xce\x1c\xe9\x00\x00\x002IDAT8\x8dc\xfc\xcf\xf0\xff?\x03\x1e\xc0\xc8\xc0\x88O\x9a\x81\t\xaf,\x11`\xd4\x80\xc1`\x00#\x03\x03\x03\xdet\xf0\x1f\xbf\xf4 \xf0\xc2\xa8\x01T0\x00\x001\xfa\x06\x1b\xa4}\x155\x00\x00\x00\x00IEND\xaeB`\x82";
@@ -58,8 +58,8 @@ pub struct GPUTexture{
 
         let sampler = gc.device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some(format!("{name} View").as_str()),
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
 
@@ -143,9 +143,11 @@ pub struct AssetManager{
 
     fonts: SlotMap<FontKey, Arc<Font>>,
     fonts_by_name: HashMap<String, FontKey>,
+    missing_font: Arc<Font>
 } impl AssetManager{
     pub fn create(gc: GraphicsControl) -> AssetManager{
         let missing_texture = Arc::new(GPUTexture::from_bytes(&gc, MISSING_TEXTURE, "MISSING_TEXTURE"));
+        let missing_font = Arc::new(Font::create(AtlasJSON{font: "MISSING_FONT".into(), font_size: 32, atlas_width: 32, atlas_height: 32, glyphs: Vec::new()}, TextureKey::null()));
 
         AssetManager {
             gc,
@@ -156,6 +158,7 @@ pub struct AssetManager{
 
             fonts: SlotMap::with_key(),
             fonts_by_name: HashMap::new(),
+            missing_font
         }
     }
     
@@ -197,35 +200,37 @@ pub struct AssetManager{
         )
     }
 
-    // pub fn create_font(&mut self, font: FontTextureAtlas, name: String) -> FontKey{
-    //     let id = self.fonts.insert(Arc::new(GPUfont::from_di(&self.gc, image, &name)));
-    //     self.fonts_by_name.insert(name, id);
-    //     id
-    // }
+    pub fn create_font(&mut self, font: FontTextureAtlas, name: String) -> FontKey{
+        let atlas = self.create_texture(font.image, format!("ATLAS[{name}]"));
 
-    // pub fn font_or_create<F: FnOnce() -> DynamicImage>(&mut self, name: &str, create: Option<F>) -> Option<(FontKey, Arc<GPUfont>)>{
-    //     if let Some(key) = self.fonts_by_name.get(name){
-    //         // SAFTEY: fonts and fonts_by_name should always match
-    //         Some((key.clone(), unsafe{self.fonts.get_unchecked(*key).to_owned()}))
-    //     } else {
-    //         let di = create?();
-    //         let key = self.create_font(di, name.into());
-    //         Some((key.clone(), unsafe{self.fonts.get_unchecked(key).to_owned()}))
-    //     }
-    // }
+        let id = self.fonts.insert(Arc::new(Font::create(font.json, atlas)));
+        self.fonts_by_name.insert(name, id);
+        id
+    }
 
-    // pub fn font_by_name(&self, name: &str) -> fontOrMissing{
-    //     self.fonts_by_name.get(name).map_or_else(
-    //         || {fontOrMissing::Missing(self.missing_font.to_owned())},
-    //         // SAFTEY: fonts and fonts_by_name should always match
-    //         |v| {fontOrMissing::font(unsafe{self.fonts.get_unchecked(v.to_owned())}.to_owned())}
-    //     )
-    // }
+    pub fn font_or_create<F: FnOnce() -> FontTextureAtlas>(&mut self, name: &str, create: Option<F>) -> Option<(FontKey, Arc<Font>)>{
+        if let Some(key) = self.fonts_by_name.get(name){
+            // SAFTEY: fonts and fonts_by_name should always match
+            Some((key.clone(), unsafe{self.fonts.get_unchecked(*key).to_owned()}))
+        } else {
+            let di = create?();
+            let key = self.create_font(di, name.into());
+            Some((key.clone(), unsafe{self.fonts.get_unchecked(key).to_owned()}))
+        }
+    }
 
-    // pub fn font_by_id(&self, key: fontKey) -> fontOrMissing{
-    //     self.fonts.get(key).map_or_else(
-    //         || {fontOrMissing::Missing(self.missing_font.to_owned())},
-    //         |v| {fontOrMissing::font(v.to_owned())}
-    //     )
-    // }
+    pub fn font_by_name(&self, name: &str) -> FontOrMissing{
+        self.fonts_by_name.get(name).map_or_else(
+            || {FontOrMissing::Missing(self.missing_font.to_owned())},
+            // SAFTEY: fonts and fonts_by_name should always match
+            |v| {FontOrMissing::Font(unsafe{self.fonts.get_unchecked(v.to_owned())}.to_owned())}
+        )
+    }
+
+    pub fn font_by_id(&self, key: FontKey) -> FontOrMissing{
+        self.fonts.get(key).map_or_else(
+            || {FontOrMissing::Missing(self.missing_font.to_owned())},
+            |v| {FontOrMissing::Font(v.to_owned())}
+        )
+    }
 }

@@ -37,9 +37,9 @@ fn vs_main(
     );
 
     // Convert [-1.0, 1.0] -> [0, 1].
-    let base_uv = position * vec2(1., -1) / 2. + vec2(0.5);
+    let base_uv = position * vec2(1., -1.) / 2. + vec2(0.5);
 
-    out.position = transform * vec4(position, 0.0, 1.0);
+    out.position = transform * vec4(position, 1.0, 1.0);
 
     out.uv = mix(
         uv_min,

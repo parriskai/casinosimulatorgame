@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::RandomState};
 
 use bytemuck::{Pod, Zeroable};
 use nalgebra::Matrix4;
@@ -204,7 +204,7 @@ pub struct AtlasRenderer{
         }
     }
 
-    pub fn draw_atlas(&mut self, tkey: TextureKey, uv: UvBox, transform: Matrix4<f32>) {
+    pub fn draw_atlas<T: IntoGPUMatrix<RAW = [[f32; 4]; 4]>>(&mut self, tkey: TextureKey, uv: UvBox, transform: T) {
         let bucket = self
             .buckets
             .entry(tkey)
