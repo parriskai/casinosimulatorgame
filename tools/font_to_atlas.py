@@ -72,6 +72,17 @@ def main():
 
         advance = font.getlength(char)
 
+        kerning = {}
+        for next_char in chars:
+            pair_width = font.getlength(char + next_char)
+            left_width = font.getlength(char)
+            right_width = font.getlength(next_char)
+            kern = pair_width - left_width - right_width
+
+            if kern:
+                kerning[next_char] = kern
+            
+
         glyphs.append({
             "char": char,
             "codepoint": ord(char),
@@ -79,6 +90,7 @@ def main():
             "width": width,
             "height": height,
             "advance": advance,
+            "kerning": kerning
         })
 
     if not glyphs:
@@ -157,6 +169,8 @@ def main():
             "v0": cell_y / atlas_height,
             "u1": (cell_x + cell_width) / atlas_width,
             "v1": (cell_y + cell_height) / atlas_height,
+
+            "kerning": glyph["kerning"]
         })
 
     atlas.save(args.output)

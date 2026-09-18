@@ -205,10 +205,10 @@ pub struct Window{
             ).forget_lifetime();
             let ss = self.pwindow.get_framebuffer_size();
 
-            //self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::CLEAR));
+            self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::CLEAR));
 
             let time = self.t.elapsed().as_secs();
-            self.font.write_text(&format!("Running for {time} seconds"), Vector2::zeros(), 2.5, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
+            self.font.write_text("Hello, World!", Vector2::zeros(), 2.5, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
 
             self.renderer.finish(&mut render_pass);
         }

@@ -46,7 +46,7 @@ pub struct AtlasRenderer{
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
 
-    buckets: HashMap<TextureKey, AtlasBucket>,
+    buckets: HashMap<(RenderLayer, TextureKey), AtlasBucket>,
 
     world_to_cvv: Matrix4<f32>,
 
@@ -218,7 +218,7 @@ pub struct AtlasRenderer{
     pub fn draw_atlas(&mut self, tkey: TextureKey, uv: UvBox, position: (Vector2<f32>, Vector2<f32>, RenderLayer)) {
         let bucket = self
             .buckets
-            .entry(tkey)
+            .entry((position.2, tkey))
             .or_insert_with(|| AtlasBucket {
                 instances: Vec::new(),
                 instance_buffer: None,
@@ -253,12 +253,15 @@ pub struct AtlasRenderer{
             wgpu::IndexFormat::Uint16,
         );
 
-        for (&texture_key, bucket) in self.buckets.iter_mut() {
+        let mut buckets: Vec<_> =self.buckets.iter_mut().collect();
+        buckets.sort_by(|((a, _), _), ((b, _), _)| a.cmp(b));
+
+        for ((__, texture_key), bucket) in buckets{
             if bucket.instances.is_empty() {
                 continue;
             }
 
-            let texture = match asset_mgr.texture_by_id(texture_key){
+            let texture = match asset_mgr.texture_by_id(*texture_key){
                 TextureOrMissing::Texture(t) => t,
                 TextureOrMissing::Missing(t) => {
                     // Full Missing Texture

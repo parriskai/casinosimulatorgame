@@ -2,10 +2,11 @@ use std::{collections::HashMap, io::Cursor, sync::Arc};
 
 use nalgebra::Vector2;
 use serde::Deserialize;
+use wgpu::naga::compact::KeepUnused::No;
 
 use crate::{graphics::{RenderLayer, UvBox, asset_mgr::{GPUTexture, TextureKey}, atlasrender::AtlasRenderer}, utils::{IntoGPUMatrix, Transform}};
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AtlasGlyph{
     pub char: char,
     pub x: usize,
@@ -19,7 +20,9 @@ pub struct AtlasGlyph{
     pub offset_y: i32,
 
     #[serde(flatten)]
-    pub uvbox: UvBox
+    pub uvbox: UvBox,
+
+    pub kerning: HashMap<char, f32>
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,10 +65,10 @@ pub struct Font{
         }
 
         let missing = if let Some(question_mark) = mapping.get(&'?'){
-            *question_mark
+            question_mark.clone()
         } else if !mapping.is_empty(){
             // SAFTEY: We just checked
-            *unsafe{mapping.iter().next().unwrap_unchecked()}.1
+            unsafe{mapping.iter().next().unwrap_unchecked()}.1.clone()
         } else {
             let size = json.font_size as usize;
             AtlasGlyph{
@@ -79,7 +82,9 @@ pub struct Font{
                 advance: size as f32,
                 offset_x: 0,
                 offset_y: 0,
-                uvbox: UvBox { u0: 0., v0: 0., u1: size as f32, v1: size as f32 }}
+                uvbox: UvBox { u0: 0., v0: 0., u1: size as f32, v1: size as f32 },
+                kerning: HashMap::new()
+            }
         };
 
         Font{
@@ -91,12 +96,16 @@ pub struct Font{
     }
 
     pub fn write_text(&self, text: &str, mut pos: Vector2<f32>, scale: f32, layer: RenderLayer, ar: &mut AtlasRenderer){
+        let mut preveious: Option<&AtlasGlyph> = None;
         for chr in text.chars(){
             let glyph = self.mapping.get(&chr).unwrap_or(&self.missing);
-            let topleft = pos + Vector2::new(glyph.offset_x as f32, glyph.offset_y as f32);
+            let kerning = if let Some(prev) = preveious{prev.kerning.get(&chr).cloned().unwrap_or(0.0) * 1.5} else {0.0};
 
-            ar.draw_atlas(self.atlas, glyph.uvbox, (topleft, topleft + Vector2::new(glyph.glyph_width as f32, glyph.glyph_height as f32) * scale, layer));
-            pos.x += glyph.advance / 1.5 * scale;
+            let topleft = pos + Vector2::new(glyph.offset_x as f32 + kerning, glyph.offset_y as f32) * scale;
+            
+            ar.draw_atlas(self.atlas, glyph.uvbox, (topleft, topleft + Vector2::new(glyph.width as f32, glyph.height as f32) * scale, layer));
+            pos.x += (glyph.advance * 1.15 + kerning) * scale;
+            preveious = Some(glyph);
         }
     }
 }

@@ -26,7 +26,7 @@ pub struct UvBox{
 }
 
 #[repr(u8)]
-#[derive(EnumCount, Clone, Copy)]
+#[derive(EnumCount, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RenderLayer{
     CLEAR,
     TOP,
