@@ -7,7 +7,7 @@ use slotmap::Key;
 use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
 use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
 use super::graphicscontrol::GraphicsControl;
-use std::sync::Arc;
+use std::{sync::Arc, time::{Instant, SystemTime}};
 
 /// The window, and everything on it
 pub struct Window{
@@ -20,7 +20,8 @@ pub struct Window{
     pub renderer: Renderer,
     glfw: Glfw,
 
-    font: Arc<Font>
+    font: Arc<Font>,
+    t: Instant
 } impl Window {
     pub fn create() -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
@@ -48,6 +49,7 @@ pub struct Window{
                 config,
                 renderer,
                 font,
+                t: Instant::now()
             }
         )
     }
@@ -202,8 +204,11 @@ pub struct Window{
                 },
             ).forget_lifetime();
             let ss = self.pwindow.get_framebuffer_size();
+
             self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::CLEAR));
-            self.font.write_text("Hello, World!", Vector2::zeros(), 1., RenderLayer::TOP, &mut self.renderer.atlas_renderer);
+
+            let time = self.t.elapsed().as_secs();
+            self.font.write_text(&format!("Running for {time} seconds"), Vector2::zeros(), 2.5, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
 
             self.renderer.finish(&mut render_pass);
         }

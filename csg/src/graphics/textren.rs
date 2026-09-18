@@ -96,7 +96,7 @@ pub struct Font{
             let topleft = pos + Vector2::new(glyph.offset_x as f32, glyph.offset_y as f32);
 
             ar.draw_atlas(self.atlas, glyph.uvbox, (topleft, topleft + Vector2::new(glyph.glyph_width as f32, glyph.glyph_height as f32) * scale, layer));
-            pos.x += glyph.advance / 2. * scale;
+            pos.x += glyph.advance / 1.5 * scale;
         }
     }
 }
