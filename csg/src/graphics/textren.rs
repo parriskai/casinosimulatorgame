@@ -1,10 +1,7 @@
+use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, atlasrender::AtlasRenderer}};
 use std::{collections::HashMap, io::Cursor, sync::Arc};
-
-use nalgebra::Vector2;
 use serde::Deserialize;
-use wgpu::naga::compact::KeepUnused::No;
-
-use crate::{graphics::{RenderLayer, UvBox, asset_mgr::{GPUTexture, TextureKey}, atlasrender::AtlasRenderer}, utils::{IntoGPUMatrix, Transform}};
+use nalgebra::Vector2;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AtlasGlyph{
