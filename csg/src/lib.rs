@@ -4,3 +4,4 @@ pub mod prelude;
 pub mod errors;
 pub mod utils;
 pub mod game;
+pub mod vfs;

@@ -34,9 +34,9 @@ pub struct Window{
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
         let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format);
 
-        let fb_json = FlipbookJSON::from_include(include_str!("../../../assets/bob_phone.json"));
+        let fb_json = FlipbookJSON::from_include(include_str!("../../../assets/bob_idle.json"));
         let fb_atlas = renderer.asset_manager.create_texture_from_bytes(
-             include_bytes!("../../../assets/bob_phone.png"),
+             include_bytes!("../../../assets/bob_idle.png"),
              "ATLAS[BobIDLE]".into());
 
         let mut fb = Flipbook::create(fb_atlas, fb_json);

@@ -65,16 +65,3 @@ pub struct Flipbook{
         ar.draw_atlas(self.atlas, self.json.frames[self.index], (pos, pos + Vector2::new(self.json.size[0], self.json.size[1]) * scale, layer));
     }
 }
-
-
-pub enum FlipbookOrMissing {
-    Flipbook(Arc<Flipbook>),
-    Missing(Arc<Flipbook>)
-} impl FlipbookOrMissing{
-    pub fn inner(self) -> Arc<Flipbook>{
-        match self{
-            FlipbookOrMissing::Flipbook(f) => f,
-            FlipbookOrMissing::Missing(m) => m
-        }
-    }
-}
