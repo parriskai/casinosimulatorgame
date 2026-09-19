@@ -2,6 +2,7 @@ pub mod graphicscontrol;
 pub mod atlasrender;
 pub mod asset_mgr;
 pub mod renderer;
+pub mod flipbook;
 pub mod textren;
 pub mod window;
 

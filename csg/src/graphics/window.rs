@@ -1,4 +1,4 @@
-use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, renderer::Renderer, textren::{Font, FontTextureAtlas}}, prelude::*, utils::Transform};
+use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, flipbook::{Flipbook, FlipbookJSON}, renderer::Renderer, textren::{Font, FontTextureAtlas}}, prelude::*, utils::Transform};
 use nalgebra::Vector2;
 // Were going to let this slide
 #[allow(deprecated)]
@@ -7,7 +7,7 @@ use slotmap::Key;
 use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
 use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
 use super::graphicscontrol::GraphicsControl;
-use std::{sync::Arc, time::{Instant, SystemTime}};
+use std::{io::Cursor, sync::Arc, time::{Instant, SystemTime}};
 
 /// The window, and everything on it
 pub struct Window{
@@ -20,7 +20,7 @@ pub struct Window{
     pub renderer: Renderer,
     glfw: Glfw,
 
-    font: Arc<Font>,
+    fb: Flipbook,
     t: Instant
 } impl Window {
     pub fn create() -> GResult<Window>{
@@ -34,12 +34,14 @@ pub struct Window{
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
         let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format);
 
-        let font_key = renderer.asset_manager.create_font(
-            FontTextureAtlas::from_included(include_bytes!("../../../generated_assets/atlas.png"),
-            include_str!("../../../generated_assets/atlas.json")), "KiwiSoda".into());
+        let fb_json = FlipbookJSON::from_include(include_str!("../../../assets/bob_phone.json"));
+        let fb_atlas = renderer.asset_manager.create_texture_from_bytes(
+             include_bytes!("../../../assets/bob_phone.png"),
+             "ATLAS[BobIDLE]".into());
 
-        let font = renderer.asset_manager.font_by_id(font_key).inner();
-        
+        let mut fb = Flipbook::create(fb_atlas, fb_json);
+        fb.resume(0.);
+
         Ok(
             Window {
                 glfw,
@@ -48,7 +50,7 @@ pub struct Window{
                 surface,
                 config,
                 renderer,
-                font,
+                fb,
                 t: Instant::now()
             }
         )
@@ -207,8 +209,12 @@ pub struct Window{
 
             self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::CLEAR));
 
-            let time = self.t.elapsed().as_secs();
-            self.font.write_text("Hello, World!", Vector2::zeros(), 2.5, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
+            let time = self.t.elapsed().as_secs_f64();
+            self.fb.update(time);
+            for x in 0..10{
+                self.fb.draw(Vector2::new((x * 100) as f32, 0.), 5.0, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
+                self.fb.draw(Vector2::new((x * 100) as f32, 200.), 5.0, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
+            }
 
             self.renderer.finish(&mut render_pass);
         }
