@@ -1,3 +1,6 @@
+//! `csg::game`
+//! Core game class
+
 use crate::{graphics::window::Window, prelude::*};
 
 /// Core game class, holds all the good stuff

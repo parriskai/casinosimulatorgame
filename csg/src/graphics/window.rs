@@ -1,4 +1,4 @@
-use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, flipbook::{Flipbook, FlipbookJSON}, renderer::Renderer, textren::{Font, FontTextureAtlas}}, prelude::*};
+use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, box_bg::{BoxBg, BoxBgJSON}, flipbook::{Flipbook, FlipbookJSON}, gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer, textren::{Font, FontTextureAtlas}}, prelude::*};
 use nalgebra::Vector2;
 // Were going to let this slide
 #[allow(deprecated)]
@@ -11,17 +11,16 @@ use std::{io::Cursor, sync::Arc, time::{Instant, SystemTime}};
 
 /// The window, and everything on it
 pub struct Window{
+    gr: GameRenderer,
+    im: InputManager,
+    pub renderer: Renderer,
     surface: Surface<'static>,
     config: SurfaceConfiguration,
     event: GlfwReceiver<(f64, WindowEvent)>,
 
     pwindow: PWindow,
 
-    pub renderer: Renderer,
     glfw: Glfw,
-
-    fb: Flipbook,
-    t: Instant
 } impl Window {
     pub fn create() -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
@@ -34,13 +33,8 @@ pub struct Window{
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
         let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format);
 
-        let fb_json = FlipbookJSON::from_include(include_str!("../../../assets/bob_idle.json"));
-        let fb_atlas = renderer.asset_manager.create_texture_from_bytes(
-             include_bytes!("../../../assets/bob_idle.png"),
-             "ATLAS[BobIDLE]".into());
-
-        let mut fb = Flipbook::create(fb_atlas, fb_json);
-        fb.resume(0.);
+        let im = InputManager::create();
+        let gr = GameRenderer::create(&mut renderer);
 
         Ok(
             Window {
@@ -50,22 +44,23 @@ pub struct Window{
                 surface,
                 config,
                 renderer,
-                fb,
-                t: Instant::now()
+                gr,
+                im
             }
         )
     }
 
     fn create_glfw_window(glfw: &mut glfw::Glfw) -> GResult<(PWindow, glfw::GlfwReceiver<(f64, WindowEvent)>)>{
         let (mut window, events) = glfw.create_window(
-            704,
-            318,
+            512,
+            512,
             "Casino Simulator Game",
             glfw::WindowMode::Windowed).ok_or(
                 GError::GLFWError(
                     GLFWError::WindowError("Failed to create window!".into())
                 )
             )?;
+        window.maximize();
         window.set_all_polling(true);
         window.make_current();
         Ok((window, events))
@@ -144,7 +139,10 @@ pub struct Window{
                 }
                 
                 e => {
-                    tracing::warn!("Unhandled window event {e:?}");
+                    // If IM doesnt handle it
+                    if !self.im.handle_event(&e){
+                        tracing::warn!("Unhandled window event {e:?}");
+                    }
                 }
             }
         }
@@ -205,16 +203,12 @@ pub struct Window{
                     multiview_mask: None,
                 },
             ).forget_lifetime();
-            let ss = self.pwindow.get_framebuffer_size();
+            
+            //let ss = self.pwindow.get_framebuffer_size();
 
-            self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::CLEAR));
+            //self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::Clear));
 
-            let time = self.t.elapsed().as_secs_f64();
-            self.fb.update(time);
-            for x in 0..10{
-                self.fb.draw(Vector2::new((x * 100) as f32, 0.), 5.0, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
-                self.fb.draw(Vector2::new((x * 100) as f32, 200.), 5.0, RenderLayer::TOP, &mut self.renderer.atlas_renderer);
-            }
+            self.gr.frame(&mut self.renderer, &self.im);
 
             self.renderer.finish(&mut render_pass);
         }
@@ -225,7 +219,7 @@ pub struct Window{
 
     pub fn frame(&mut self){
         self.handle_events();
-
+        self.im.tick();
         self.render();
         
         //self.pwindow.swap_buffers();

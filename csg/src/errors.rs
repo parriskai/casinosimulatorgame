@@ -1,12 +1,22 @@
+//! `csg::error`
+//! Game error reports
+//! 
+//! You probably dont need to include this if you are already using [`csg::prelude`]
+
 use thiserror::Error;
 
 /// An error originating or related to GLFW
 #[derive(Error, Debug)]
 pub enum GLFWError {
+    /// Initalization error
     #[error("Failed to init ({0})")]
     InitError(glfw::InitError),
+
+    /// Window error
     #[error("Window error ({0})")]
     WindowError(String),
+
+    /// Error interacting with a handle
     #[error("Handle error ({0})")]
     HandleError(raw_window_handle::HandleError)
 }
