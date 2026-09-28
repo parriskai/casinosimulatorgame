@@ -54,6 +54,7 @@ macro_rules! build_sprite_state_enum {
                         $crate::graphics::RenderLayer,
                     ),
                 ) {
+                    use ::slotmap::Key;
                     match state {
                         $(
                             $name::$v => {
@@ -67,7 +68,7 @@ macro_rules! build_sprite_state_enum {
                                     }
                                     None => {
                                         ar.draw_atlas(
-                                            tk,
+                                            $crate::graphics::asset_mgr::TextureKey::null(),
                                             $crate::graphics::UvBox::FULL,
                                             pos,
                                         );

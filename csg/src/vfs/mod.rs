@@ -1,130 +1,458 @@
-use std::{collections::HashMap, fmt::{Display, Write}, iter::once};
+use vfs::{FileSystem, VfsFileType, VfsMetadata, VfsResult, error::VfsErrorKind};
+use std::collections::HashMap;
 
-
-enum Index<D,F>{
-    Directory(D),
-    File(F)
+enum LocationType<'a>{
+    Root,
+    Mount(&'a Box<dyn FileSystem>, &'a str),
+    None
 }
+pub struct ModuleFS{
+    mounts: HashMap<String, Box<dyn FileSystem>>
+} impl ModuleFS{
+    pub fn create() -> ModuleFS{
+        ModuleFS {
+            mounts: HashMap::new()
+        }
+    }
+    pub fn mount(&mut self, loc: String, fs: Box<dyn FileSystem>) -> VfsResult<Option<Box<dyn FileSystem>>>{
+        if loc.contains('/') || loc == "." || loc == ".." {
+            Err(VfsErrorKind::InvalidPath.into())
+        } else {
+            Ok(self.mounts.insert(loc, fs))
+        }
+    }
 
-trait VFSMountPoint{
-    fn build_index(&self) -> Index<HashMap<String, FileIndex>, FileIndex>;
-}
-
-slotmap::new_key_type!{
-    pub struct MountPoint;
-    pub struct FileIndex;
-}
-
-pub struct Path{
-    pieces: Vec<usize>,
-    s: String
-} impl Path{
-    pub fn from_string(input: &str) -> Path{
-        let mut last = 0;
-        let mut processed: Vec<&str> = Vec::new();
-        let mut pieces: Vec<usize> = Vec::new();
-
-        for slash in input.char_indices().filter_map(|(i,c)| if c == '/' {Some(i)} else {None}).chain(once(input.len())){
-            let ss = &input[last..slash];
-            if ss.is_empty(){
-                // root slash
-                processed.clear();
-                pieces.clear();
-            } else if ss == ".."{
-                // Up one level
-                processed.pop();
-                pieces.pop();
-            } else if ss == "."{
-                // Do nothing, current dir
+    pub fn umount(&mut self, loc: String) -> VfsResult<Box<dyn FileSystem>>{
+        if loc.contains('/') || loc == "." || loc == ".." {
+            Err(VfsErrorKind::InvalidPath.into())
+        } else {
+            if let Some(mp) = self.mounts.remove(&loc){
+                Ok(mp)
             } else {
-                pieces.push(pieces.last().copied().unwrap_or(0) + ss.len());
-                processed.push(ss);
-            }
-            last = slash;
-        }
-        let s = processed.concat();
-        Path { pieces, s }
-    }
-    
-    pub fn parent(&mut self) -> Option<String>{
-        match self.pieces.len(){
-            0 => {
-                // Do nothing
-                None
-            },
-            1 => {
-                self.pieces.clear();
-                Some(std::mem::replace(&mut self.s, String::new()))
-            },
-            n => {
-                self.pieces.pop();
-
-                // Saftey: the match checked for us
-                Some(self.s.split_off(unsafe{*self.pieces.get_unchecked(n - 2)}))
+                Err(VfsErrorKind::FileExists.into())
             }
         }
     }
 
-    pub fn name(&self) -> Option<&str>{
-        match self.pieces.len(){
-            0 => {
-                // Do nothing
-                None
-            },
-            1 => {
-                Some(self.s.as_str())
-            },
-            n => {
-                // Saftey: the match checked for us
-                Some(&self.s[unsafe{*self.pieces.get_unchecked(n - 2)}..])
+    pub fn copy_file_across_mounts(smp: &Box<dyn FileSystem>, srem: &str, dmp: &Box<dyn FileSystem>, drem: &str) -> VfsResult<()>{
+        let mut source = smp.open_file(srem)?;
+        if dmp.exists(drem)?{
+            dmp.remove_file(drem)?;
+        }
+        let mut destination = dmp.create_file(drem)?;
+
+        let mut buffer = [0; 1024 * 1024];
+        loop{
+            let size = source.read(&mut buffer)?;
+
+            // We could probably end if less than 2 ^ 20 bytes but the spec
+            // doest gurenteee that is the actual EOF
+            if size == 0{
+                break;
+            }
+
+            let wsize = destination.write(&buffer[..size])?;
+
+            if size != wsize{
+                tracing::error!("VFS File copy failed! Read {size} bytes but only wrote {wsize} bytes");
+            }
+        }
+        Ok(())
+    }
+
+    fn get<'a>(&'a self, path: &'a str) -> LocationType<'a>{
+        if path.is_empty() || path == "/"{
+            LocationType::Root
+        } else {
+            let mut ps = path.splitn(1, '/');
+            // SAFTEY: We allready checked
+            let mount = unsafe{ps.next().unwrap_unchecked()};
+
+            if let Some(mp) = self.mounts.get(mount){
+                let rem = ps.next().unwrap_or("");
+
+                LocationType::Mount(mp, rem)
+            } else {
+                LocationType::None
             }
         }
     }
-
-    pub fn is_child_of(&self, other: &Path) -> bool{
-        if other.s.len() > self.s.len(){return false}
-        self.pieces.starts_with(&other.pieces) && self.s.starts_with(&other.s)
-    }
-
-    pub fn clear(&mut self){
-        self.pieces.clear();
-        self.s.clear();
-    }
-    
-    pub fn join(&mut self, other: Path){
-        let offset = self.s.len();
-        self.pieces.extend(other.pieces.iter().map(|x| x + offset));
-        self.s.push_str(other.s.as_str());
-    }
-
-    pub fn join_str(&mut self, s: &str){
-
-    }
-} impl Display for Path{
+} impl core::fmt::Debug for ModuleFS{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.pieces.is_empty(){
-            f.write_char('/')
-        } else{
-            let mut ctr = 0;
-            for p in self.pieces.iter().cloned(){
-                f.write_char('/')?;
-                f.write_str(&self.s[ctr..p])?;
-                ctr = p;
+        f.write_str("ModuleFS:\n")?;
+
+        if self.mounts.is_empty(){
+            f.write_str("| No mount points\n")?;
+        }
+        for (mp, fs) in self.mounts.iter(){
+            f.write_fmt(format_args!("| /{mp} ({fs:?})\n"))?;
+        }
+
+        Ok(())
+    }
+} impl FileSystem for ModuleFS{
+    fn read_dir(&self, path: &str) -> vfs::VfsResult<Box<dyn Iterator<Item = String> + Send>> {
+        match self.get(path){
+            LocationType::Root => {
+                let keys: Vec<String> = self.mounts.keys().cloned().collect();
+                Ok(Box::new(keys.into_iter()))
             }
             
-            Ok(())
+            LocationType::Mount(mp, rem) => {
+                mp.read_dir(rem)
+            }
+
+            LocationType::None => {
+                Err(VfsErrorKind::FileNotFound.into())
+            }
+        }
+    }
+
+    fn create_dir(&self, path: &str) -> vfs::VfsResult<()> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.create_dir(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn open_file(&self, path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndRead + Send>> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.open_file(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn create_file(&self, path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndWrite + Send>> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.create_file(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn append_file(&self, path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndWrite + Send>> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.append_file(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn metadata(&self, path: &str) -> vfs::VfsResult<vfs::VfsMetadata> {
+        match self.get(path) {
+            LocationType::Root => {
+                Ok(VfsMetadata{
+                    file_type: vfs::VfsFileType::Directory,
+                    len: 0,
+                    created: None,
+                    modified: None,
+                    accessed: None
+                })
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.metadata(rem)
+            }
+
+            LocationType::None => {
+                Err(VfsErrorKind::FileNotFound.into())
+            }
+        }
+    }
+
+    fn exists(&self, path: &str) -> vfs::VfsResult<bool> {
+        match self.get(path) {
+            LocationType::Root => {
+                Ok(true)
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.exists(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Ok(false)
+                }
+            }
+        }
+    }
+
+    fn remove_file(&self, path: &str) -> vfs::VfsResult<()> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.remove_file(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn remove_dir(&self, path: &str) -> vfs::VfsResult<()> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.remove_dir(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn set_creation_time(&self, path: &str, time: std::time::SystemTime) -> vfs::VfsResult<()> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.set_creation_time(rem, time)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn set_modification_time(&self, path: &str, time: std::time::SystemTime) -> vfs::VfsResult<()> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.set_modification_time(rem, time)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn set_access_time(&self, path: &str, time: std::time::SystemTime) -> vfs::VfsResult<()> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.set_access_time(rem, time)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn copy_file(&self, src: &str, dest: &str) -> vfs::VfsResult<()> {
+        match (self.get(src), self.get(dest)) {
+            (LocationType::Root, _) | (_, LocationType::Root) => {
+                Err(VfsErrorKind::NotSupported.into())
+            },
+
+            (LocationType::Mount(smp, srem), LocationType::Mount(dmp, drem)) => {
+                if std::ptr::eq(smp.as_ref(), dmp.as_ref()){
+                    smp.copy_file(srem, drem)
+                } else {
+                    Self::copy_file_across_mounts(smp, srem, dmp, drem)
+                }
+            }
+            (LocationType::None, _) => {
+                if src.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            },
+
+            (_, LocationType::None) => {
+                if dest.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn move_file(&self, src: &str, dest: &str) -> vfs::VfsResult<()> {
+        match (self.get(src), self.get(dest)) {
+            (LocationType::Root, _) | (_, LocationType::Root) => {
+                Err(VfsErrorKind::NotSupported.into())
+            },
+
+            (LocationType::Mount(smp, srem), LocationType::Mount(dmp, drem)) => {
+                if std::ptr::eq(smp.as_ref(), dmp.as_ref()){
+                    smp.move_file(srem, drem)
+                } else {
+                    Self::copy_file_across_mounts(smp, srem, dmp, drem)?;
+                    smp.remove_file(srem)?;
+                    Ok(())
+                }
+            }
+            (LocationType::None, _) => {
+                if src.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            },
+
+            (_, LocationType::None) => {
+                if dest.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+
+    fn move_dir(&self, src: &str, dest: &str) -> VfsResult<()> {
+        match (self.get(src), self.get(dest)) {
+            (LocationType::Root, _) | (_, LocationType::Root) => {
+                Err(VfsErrorKind::NotSupported.into())
+            },
+
+            (LocationType::Mount(smp, srem), LocationType::Mount(dmp, drem)) => {
+                if std::ptr::eq(smp.as_ref(), dmp.as_ref()){
+                    smp.move_dir(srem, drem)
+                } else {
+                    let mut queue = vec![String::new()];
+
+                    while !queue.is_empty(){
+                        //SAFTEY: We just checked
+                        let path = unsafe{queue.pop().unwrap_unchecked()};
+                        let origin = &join_path(srem, &path);
+                        let destination = &join_path(drem, &path);
+
+                        let metadata = smp.metadata(origin)?;
+                        
+                        match metadata.file_type {
+                            VfsFileType::File => {
+                                Self::copy_file_across_mounts(smp, origin, dmp, destination)?;
+                            }
+                            VfsFileType::Directory => {
+                                dmp.create_dir(destination)?;
+
+                                queue.extend(smp.read_dir(origin)?.map(|x| join_path(&path, x.as_str())));
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+            }
+            (LocationType::None, _) => {
+                if src.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            },
+
+            (_, LocationType::None) => {
+                if dest.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
         }
     }
 }
 
-
-pub struct VFS{
-    mount_points: slotmap::SlotMap<MountPoint, (String, Box<dyn VFSMountPoint>)>,
-    index: HashMap<String, Index<Vec<String>, FileIndex>>
-} impl VFS{
-    fn build_index(&mut self){
-        for (base,mp) in self.mount_points.values(){
-            
-        }
+pub fn join_path(a: &str, b: &str) -> String{
+    if b.is_empty(){
+        a.into()
+    } else if a.ends_with('/'){
+        String::from(a) + b
+    } else {
+        String::from(a) + "/" + b
     }
 }
