@@ -16,7 +16,7 @@
 
 ## Authors
 
--  Kai Parris (Programmer)
+- Kai Parris (Programmer)
 - Charles Rothbaum (Programmer)
 - Evan Wright (Composer)
 - Adrian (Artist)
