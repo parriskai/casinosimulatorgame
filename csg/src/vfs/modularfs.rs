@@ -5,7 +5,7 @@ use crate::vfs::join_path;
 
 enum LocationType<'a>{
     Root,
-    Mount(&'a Box<dyn FileSystem>, String),
+    Mount(&'a Box<dyn FileSystem>, &'a str),
     None
 }
 pub struct ModuleFS{
@@ -63,30 +63,19 @@ pub struct ModuleFS{
     }
 
     fn get<'a>(&'a self, path: &'a str) -> LocationType<'a>{
-        if path.is_empty() || path == "/"{
-            LocationType::Root
-        } else {
-            let mut p = path.to_owned();
-            
-            if p.starts_with('/'){
-                // SAFTEY: We just checked
-                p = unsafe{p.strip_prefix('/').unwrap_unchecked()}.to_string();
-            }
-
-            let mut ps = p.splitn(2, '/');
-
-            // SAFTEY: We allready checked
-            let mount = unsafe{ps.next().unwrap_unchecked()};
-
-            if let Some(mp) = self.mounts.get(mount){
-                let mut rem = ps.next().unwrap_or("").to_owned();
-                if !rem.starts_with('/'){
-                    rem = format!("/{rem}");
-                }
-                LocationType::Mount(mp, rem)
-            } else {
-                LocationType::None
-            }
+        let path = path.trim_start_matches('/');
+        if path.is_empty(){
+           return LocationType::Root;
+        }
+        // split mount/rest at the first `/` and remainder keeps the `/`
+        let (mount, rem) = match path.find('/'){
+            Some(i) => (&path[..i], &path[i..]),
+            None => (path, ""),
+        };
+         
+        match self.mounts.get(mount){
+            Some(mp)=>LocationType::Mount(mp, rem), 
+            None => LocationType::None,
         }
     }
 } impl core::fmt::Debug for ModuleFS{
@@ -111,7 +100,7 @@ pub struct ModuleFS{
             }
             
             LocationType::Mount(mp, rem) => {
-                mp.read_dir(&rem)
+                mp.read_dir(rem)
             }
 
             LocationType::None => {
@@ -127,7 +116,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.create_dir(&rem)
+                mp.create_dir(rem)
             }
 
             LocationType::None => {
@@ -147,7 +136,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.open_file(&rem)
+                mp.open_file(rem)
             }
 
             LocationType::None => {
@@ -167,7 +156,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.create_file(&rem)
+                mp.create_file(rem)
             }
 
             LocationType::None => {
@@ -187,7 +176,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.append_file(&rem)
+                mp.append_file(rem)
             }
 
             LocationType::None => {
@@ -213,7 +202,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.metadata(&rem)
+                mp.metadata(rem)
             }
 
             LocationType::None => {
@@ -229,7 +218,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.exists(&rem)
+                mp.exists(rem)
             }
 
             LocationType::None => {
@@ -249,7 +238,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.remove_file(&rem)
+                mp.remove_file(rem)
             }
 
             LocationType::None => {
@@ -269,7 +258,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.remove_dir(&rem)
+                mp.remove_dir(rem)
             }
 
             LocationType::None => {
@@ -289,7 +278,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.set_creation_time(&rem, time)
+                mp.set_creation_time(rem, time)
             }
 
             LocationType::None => {
@@ -309,7 +298,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.set_modification_time(&rem, time)
+                mp.set_modification_time(rem, time)
             }
 
             LocationType::None => {
@@ -329,7 +318,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.set_access_time(&rem, time)
+                mp.set_access_time(rem, time)
             }
 
             LocationType::None => {
