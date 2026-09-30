@@ -4,19 +4,21 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-glfw = "0.63.0"
-pollster = "1.0.1"
-raw-window-handle = "0.6.2"
-thiserror = "2.0.20"
-wgpu = "30.0.1"
-tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
 serde = {version = "1.0.229", features = ["derive"]}
+strum = { version = "0.28.0", features = ["derive"]}
+phf = { version = "0.14.0", features = ["macros"] }
+raw-window-handle = "0.6.2"
 serde_json = "1.0.151"
-image = "0.25.10"
-slotmap = "1.1.1"
+thiserror = "2.0.20"
 bytemuck = "1.25.2"
 nalgebra = "0.35.0"
-strum = { version = "0.28.0", features = ["derive"] }
-paste = "1.0"
+pollster = "1.0.1"
+tracing = "0.1.44"
+image = "0.25.10"
+slotmap = "1.1.1"
+glfw = "0.63.0"
+wgpu = "30.0.1"
 vfs = "0.13.0"
+zip = "8.6.0"
+paste = "1.0"

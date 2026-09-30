@@ -3,7 +3,10 @@
 //! 
 //! You probably dont need to include this if you are already using [`csg::prelude`]
 
+use serde_json::error;
 use thiserror::Error;
+use vfs::VfsError;
+use zip::result::ZipError;
 
 /// An error originating or related to GLFW
 #[derive(Error, Debug)]
@@ -52,13 +55,37 @@ impl Into<GError> for wgpu::RequestDeviceError{
     }
 }
 
+impl Into<GError> for VfsError{
+    fn into(self) -> GError {
+        GError::VFSError(self)
+    }
+}
+
+impl Into<GError> for ZipError{
+    fn into(self) -> GError {
+        GError::ZipError(self)
+    }
+}
+
+impl Into<GError> for std::io::Error{
+    fn into(self) -> GError {
+        GError::IOError(self)
+    }
+}
+
 /// General Error type
 #[derive(Error, Debug)]
 pub enum GError{
     #[error("GLFW Error ({0}))")]
     GLFWError(GLFWError),
     #[error("WGPU Error ({0})")]
-    WGPUError(WGPUError)
+    WGPUError(WGPUError),
+    #[error("VFS Error ({0})")]
+    VFSError(VfsError),
+    #[error("Zip Error ({0})")]
+    ZipError(ZipError),
+    #[error("IO Error ({0}")]
+    IOError(std::io::Error)
 }
 
 /// A thin wrapper arround rusts Result, returning either sucess or a game error

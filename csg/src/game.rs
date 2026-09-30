@@ -1,15 +1,20 @@
 //! `csg::game`
 //! Core game class
 
-use crate::{graphics::window::Window, prelude::*};
+use crate::{graphics::window::Window, prelude::*, vfs::modularfs::ModuleFS};
 
 /// Core game class, holds all the good stuff
 pub struct Game{
+    vfs: ModuleFS,
     window: Window
 } impl Game{
     /// Create the game instance
     pub fn create() -> GResult<Game>{
+        let mut vfs = ModuleFS::create();
+
+
         Ok(Game {
+            vfs,
             window: Window::create()?
         })
     }

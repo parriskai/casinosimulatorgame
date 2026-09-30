@@ -1,2 +1,2 @@
 [workspace]
-members = ["csg"]
+members = ["csg", "csg-macros"]
