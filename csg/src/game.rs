@@ -1,6 +1,6 @@
 //! `csg::game`
 //! Core game class
-use crate::{graphics::window::Window, packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS};
+use crate::{graphics::window::Window, vfs::packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS};
 
 /// Core game class, holds all the good stuff
 pub struct Game{

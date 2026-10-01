@@ -2,6 +2,8 @@ use std::{fmt::Debug, io::Cursor, iter::once};
 
 use vfs::{FileSystem, VfsFileType, VfsMetadata, error::VfsErrorKind};
 
+use crate::vfs::traits::CasinoFS;
+
 #[derive(Debug)]
 pub enum FileType{
     Folder(&'static [&'static str]),
@@ -114,5 +116,17 @@ pub struct ReadOnlyIncludeFS{
 
     fn move_dir(&self, _src: &str, _dest: &str) -> vfs::VfsResult<()> {
         Err(VfsErrorKind::NotSupported.into())
+    }
+} impl CasinoFS for ReadOnlyIncludeFS{
+    fn read_all<'a>(&self, path: &str) -> vfs::VfsResult<&'a [u8]> {
+        match self.data.get(path){
+            None => Err(VfsErrorKind::FileNotFound.into()),
+
+            Some(FileType::Folder(_)) => Err(VfsErrorKind::IoError(std::io::ErrorKind::IsADirectory.into()).into()),
+
+            Some(FileType::File(contents)) => {
+                Ok(*contents)
+            }
+        }
     }
 }

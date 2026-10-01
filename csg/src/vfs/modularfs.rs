@@ -1,22 +1,22 @@
 use vfs::{FileSystem, VfsFileType, VfsMetadata, VfsResult, error::VfsErrorKind};
 use std::collections::HashMap;
 
-use crate::vfs::join_path;
+use crate::vfs::{join_path, traits::CasinoFS};
 
 enum LocationType<'a>{
     Root,
-    Mount(&'a Box<dyn FileSystem>, &'a str),
+    Mount(&'a Box<dyn CasinoFS>, &'a str),
     None
 }
 pub struct ModuleFS{
-    mounts: HashMap<String, Box<dyn FileSystem>>
+    mounts: HashMap<String, Box<dyn CasinoFS>>
 } impl ModuleFS{
     pub fn create() -> ModuleFS{
         ModuleFS {
             mounts: HashMap::new()
         }
     }
-    pub fn mount(&mut self, loc: String, fs: Box<dyn FileSystem>) -> VfsResult<Option<Box<dyn FileSystem>>>{
+    pub fn mount(&mut self, loc: String, fs: Box<dyn CasinoFS>) -> VfsResult<Option<Box<dyn CasinoFS>>>{
         if loc.contains('/') || loc == "." || loc == ".." {
             Err(VfsErrorKind::InvalidPath.into())
         } else {
@@ -24,7 +24,7 @@ pub struct ModuleFS{
         }
     }
 
-    pub fn umount(&mut self, loc: String) -> VfsResult<Box<dyn FileSystem>>{
+    pub fn umount(&mut self, loc: String) -> VfsResult<Box<dyn CasinoFS>>{
         if loc.contains('/') || loc == "." || loc == ".." {
             Err(VfsErrorKind::InvalidPath.into())
         } else {
@@ -36,7 +36,7 @@ pub struct ModuleFS{
         }
     }
 
-    pub fn copy_file_across_mounts(smp: &Box<dyn FileSystem>, srem: &str, dmp: &Box<dyn FileSystem>, drem: &str) -> VfsResult<()>{
+    pub fn copy_file_across_mounts(smp: &Box<dyn CasinoFS>, srem: &str, dmp: &Box<dyn CasinoFS>, drem: &str) -> VfsResult<()>{
         let mut source = smp.open_file(srem)?;
         if dmp.exists(drem)?{
             dmp.remove_file(drem)?;
@@ -439,6 +439,26 @@ pub struct ModuleFS{
 
             (_, LocationType::None) => {
                 if dest.contains('/'){
+                    Err(VfsErrorKind::FileNotFound.into())
+                } else {
+                    Err(VfsErrorKind::NotSupported.into())
+                }
+            }
+        }
+    }
+} impl CasinoFS for ModuleFS{
+    fn read_all<'a>(&self, path: &str) -> VfsResult<&'a [u8]> {
+        match self.get(path) {
+            LocationType::Root => {
+                Err(VfsErrorKind::NotSupported.into())
+            }
+
+            LocationType::Mount(mp, rem) => {
+                mp.read_all(rem)
+            }
+
+            LocationType::None => {
+                if path.contains('/'){
                     Err(VfsErrorKind::FileNotFound.into())
                 } else {
                     Err(VfsErrorKind::NotSupported.into())
