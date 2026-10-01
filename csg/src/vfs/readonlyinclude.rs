@@ -31,7 +31,7 @@ pub struct ReadOnlyIncludeFS{
             None => Err(VfsErrorKind::FileNotFound.into()),
 
             Some(FileType::Folder(contents)) => {
-                Ok(Box::new(contents.clone().into_iter().map(|x| String::from(*x))))
+                Ok(Box::new(contents.into_iter().map(|x| String::from(*x))))
             }
 
             Some(FileType::File(_)) => {
