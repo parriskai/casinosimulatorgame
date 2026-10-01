@@ -1,47 +1,50 @@
 use glfw::Key;
 use nalgebra::Vector2;
+use std::time::Instant;
+use slotmap::Key as _;
 
 use crate::graphics::{input_mgr::InputManager, renderer::Renderer, sprite::{Sprite, SpriteInstance}};
+use crate::graphics::{RenderLayer, UvBox, asset_mgr::TextureKey};
+use crate::simulation::world::World;
 
-// crate::build_sprite_state_enum!{
-    // pub enum Player{
-        // North,
-        // South,
-        // East,
-        // West,
-    // } -> PlayerJSON
-// }
 
 pub struct GameRenderer{
-    // ps: Sprite<PlayerJSON>,
-    // pi: SpriteInstance<PlayerJSON>
-} impl GameRenderer {
+    world: World,
+    last_frame: Instant,
+    spawn_timer: f32,
+} 
+impl GameRenderer {
     pub fn create(ren: &mut Renderer) -> GameRenderer{
-        // let atlas = ren.asset_manager.create_texture_from_bytes(include_bytes!("../../../temp-assets/player.png"), "PLAYER".into());
-        // let ps = Sprite::create(atlas, PlayerJSON::from_include(include_str!("../../../temp-assets/player.json")));
-        // let pi = SpriteInstance::create(&ps, 5., Vector2::zeros(), super::RenderLayer::Debug, Player::South);
-
         GameRenderer {
-            // ps,
-            // pi
+            world: World::new(),
+            last_frame: Instant::now(),
+            spawn_timer: 0.0,
         }
     }
 
     pub fn frame(&mut self, ren: &mut Renderer, im: &InputManager){
-        // if im.key_down(&Key::Right){
-            // self.pi.pos.x += 10.;
-            // self.pi.state = Player::East;
-        // } else if im.key_down(&Key::Left){
-            // self.pi.pos.x -= 10.;
-            // self.pi.state = Player::West;
-        // } else if im.key_down(&Key::Down){
-            // self.pi.pos.y += 10.;
-            // self.pi.state = Player::South;
-        // } else if im.key_down(&Key::Up){
-            // self.pi.pos.y -= 10.;
-            // self.pi.state = Player::North;
-        // }
+        let now = Instant::now();
+        let dt = (now - self.last_frame).as_secs_f32();
+        self.last_frame = now;
+        self.spawn_timer += dt;
+        if self.spawn_timer > 3.0 {
+            self.world.spawn_npc();
+            self.spawn_timer = 0.0;
+        }
 
-        // self.pi.render(&self.ps, &mut ren.atlas_renderer);
+        self.world.update(dt);
+
+        // Draw machines (big boxes)
+        for m in &self.world.machines {
+            let size = Vector2::new(48.0, 64.0);
+            ren.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (m.pos, m.pos + size, RenderLayer::Clear));
+        }
+
+        // Draw NPCs (small boxes, on top)
+        for npc in &self.world.npcs {
+            let size = Vector2::new(24.0, 32.0);
+            ren.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (npc.pos, npc.pos + size, RenderLayer::Debug));
+        }
+
     }
 }
