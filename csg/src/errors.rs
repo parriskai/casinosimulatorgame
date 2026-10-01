@@ -1,9 +1,8 @@
 //! `csg::error`
 //! Game error reports
 //! 
-//! You probably dont need to include this if you are already using [`csg::prelude`]
-
-use serde_json::error;
+//! You probably dont need to include this if you are already using [`crate::prelude`]
+//! 
 use thiserror::Error;
 use vfs::VfsError;
 use zip::result::ZipError;

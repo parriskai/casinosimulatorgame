@@ -1,6 +1,6 @@
 use wgpu::{RenderPass, Texture, TextureFormat, TextureView};
 
-use crate::graphics::{asset_mgr::AssetManager, atlasrender::{self, AtlasRenderer}, graphicscontrol::GraphicsControl};
+use crate::graphics::{asset_mgr::AssetManager, atlasrender::AtlasRenderer, graphicscontrol::GraphicsControl};
 
 pub struct Renderer{
     pub gc: GraphicsControl,

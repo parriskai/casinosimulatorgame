@@ -5,7 +5,7 @@ use crate::vfs::join_path;
 
 enum LocationType<'a>{
     Root,
-    Mount(&'a Box<dyn FileSystem>, &'a str),
+    Mount(&'a Box<dyn FileSystem>, String),
     None
 }
 pub struct ModuleFS{
@@ -66,13 +66,23 @@ pub struct ModuleFS{
         if path.is_empty() || path == "/"{
             LocationType::Root
         } else {
-            let mut ps = path.splitn(1, '/');
+            let mut p = path.to_owned();
+            
+            if p.starts_with('/'){
+                // SAFTEY: We just checked
+                p = unsafe{p.strip_prefix('/').unwrap_unchecked()}.to_string();
+            }
+
+            let mut ps = p.splitn(2, '/');
+
             // SAFTEY: We allready checked
             let mount = unsafe{ps.next().unwrap_unchecked()};
 
             if let Some(mp) = self.mounts.get(mount){
-                let rem = ps.next().unwrap_or("");
-
+                let mut rem = ps.next().unwrap_or("").to_owned();
+                if !rem.starts_with('/'){
+                    rem = format!("/{rem}");
+                }
                 LocationType::Mount(mp, rem)
             } else {
                 LocationType::None
@@ -101,7 +111,7 @@ pub struct ModuleFS{
             }
             
             LocationType::Mount(mp, rem) => {
-                mp.read_dir(rem)
+                mp.read_dir(&rem)
             }
 
             LocationType::None => {
@@ -117,7 +127,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.create_dir(rem)
+                mp.create_dir(&rem)
             }
 
             LocationType::None => {
@@ -137,7 +147,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.open_file(rem)
+                mp.open_file(&rem)
             }
 
             LocationType::None => {
@@ -157,7 +167,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.create_file(rem)
+                mp.create_file(&rem)
             }
 
             LocationType::None => {
@@ -177,7 +187,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.append_file(rem)
+                mp.append_file(&rem)
             }
 
             LocationType::None => {
@@ -203,7 +213,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.metadata(rem)
+                mp.metadata(&rem)
             }
 
             LocationType::None => {
@@ -219,7 +229,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.exists(rem)
+                mp.exists(&rem)
             }
 
             LocationType::None => {
@@ -239,7 +249,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.remove_file(rem)
+                mp.remove_file(&rem)
             }
 
             LocationType::None => {
@@ -259,7 +269,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.remove_dir(rem)
+                mp.remove_dir(&rem)
             }
 
             LocationType::None => {
@@ -279,7 +289,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.set_creation_time(rem, time)
+                mp.set_creation_time(&rem, time)
             }
 
             LocationType::None => {
@@ -299,7 +309,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.set_modification_time(rem, time)
+                mp.set_modification_time(&rem, time)
             }
 
             LocationType::None => {
@@ -319,7 +329,7 @@ pub struct ModuleFS{
             }
 
             LocationType::Mount(mp, rem) => {
-                mp.set_access_time(rem, time)
+                mp.set_access_time(&rem, time)
             }
 
             LocationType::None => {
@@ -340,9 +350,9 @@ pub struct ModuleFS{
 
             (LocationType::Mount(smp, srem), LocationType::Mount(dmp, drem)) => {
                 if std::ptr::eq(smp.as_ref(), dmp.as_ref()){
-                    smp.copy_file(srem, drem)
+                    smp.copy_file(&srem, &drem)
                 } else {
-                    Self::copy_file_across_mounts(smp, srem, dmp, drem)
+                    Self::copy_file_across_mounts(smp, &srem, dmp, &drem)
                 }
             }
             (LocationType::None, _) => {
@@ -371,10 +381,10 @@ pub struct ModuleFS{
 
             (LocationType::Mount(smp, srem), LocationType::Mount(dmp, drem)) => {
                 if std::ptr::eq(smp.as_ref(), dmp.as_ref()){
-                    smp.move_file(srem, drem)
+                    smp.move_file(&srem, &drem)
                 } else {
-                    Self::copy_file_across_mounts(smp, srem, dmp, drem)?;
-                    smp.remove_file(srem)?;
+                    Self::copy_file_across_mounts(smp, &srem, dmp, &drem)?;
+                    smp.remove_file(&srem)?;
                     Ok(())
                 }
             }
@@ -404,15 +414,15 @@ pub struct ModuleFS{
 
             (LocationType::Mount(smp, srem), LocationType::Mount(dmp, drem)) => {
                 if std::ptr::eq(smp.as_ref(), dmp.as_ref()){
-                    smp.move_dir(srem, drem)
+                    smp.move_dir(&srem, &drem)
                 } else {
                     let mut queue = vec![String::new()];
 
                     while !queue.is_empty(){
                         //SAFTEY: We just checked
                         let path = unsafe{queue.pop().unwrap_unchecked()};
-                        let origin = &join_path(srem, &path);
-                        let destination = &join_path(drem, &path);
+                        let origin = &join_path(&srem, &path);
+                        let destination = &join_path(&drem, &path);
 
                         let metadata = smp.metadata(origin)?;
                         

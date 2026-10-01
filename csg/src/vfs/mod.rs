@@ -1,7 +1,6 @@
 use std::io::{Seek, Write};
-use glfw::Key::V;
 use vfs::{FileSystem, VfsFileType};
-use zip::write::{FileOptions, SimpleFileOptions};
+use zip::write::SimpleFileOptions;
 
 use crate::errors::{GResult, GeneralizeError};
 
@@ -54,12 +53,12 @@ pub trait ExportVFS: FileSystem {
                 }
 
                 VfsFileType::Directory => {
-                    zf.add_directory_from_path(&path, SimpleFileOptions::default());
+                    zf.add_directory_from_path(&path, SimpleFileOptions::default()).g_err()?;
                     queue.extend(self.read_dir(&path).g_err()?.map(|x| join_path(&path, x.as_str())));
                 }
             }
         }
-
+        zf.finish().unwrap();
         Ok(())
     }
 }

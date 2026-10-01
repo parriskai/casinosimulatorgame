@@ -1,4 +1,6 @@
+use heck::ToSnakeCase;
 use proc_macro::TokenStream;
+use proc_macro_crate::{FoundCrate, crate_name};
 use quote::{format_ident, quote};
 use syn::{
     parse::ParseStream,
@@ -71,13 +73,13 @@ impl syn::parse::Parse for SpriteStateInput {
 pub fn build_sprite_state_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as SpriteStateInput);
 
-    match expand(input) {
+    match expand_sprite_state(input) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.into_compile_error().into(),
     }
 }
 
-fn expand(input: SpriteStateInput) -> Result<proc_macro2::TokenStream> {
+fn expand_sprite_state(input: SpriteStateInput) -> Result<proc_macro2::TokenStream> {
     let SpriteStateInput {
         vis,
         _enum_token: _,
@@ -94,35 +96,56 @@ fn expand(input: SpriteStateInput) -> Result<proc_macro2::TokenStream> {
         ));
     }
 
-    let inner_name = format_ident!("{}_inner", json_name);
+    let crate_path = match crate_name("csg").unwrap() {
+        FoundCrate::Itself => quote!(crate),
+        FoundCrate::Name(name) => {
+            let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
+            quote!(::#ident)
+        }
+    };
+
+    let inner_name = format_ident!("{}Inner", json_name);
 
     let variant_names: Vec<_> =
         variants.iter().map(|v| &v.name).collect();
 
     let fields = variants.iter().map(|variant| {
-        let name = &variant.name;
-
+        let variant_name_string = &variant.name.to_string();
+        let snake_variant_name = Ident::new(variant.name.to_string().as_str().to_snake_case().as_str(), variant.name.span());
         match &variant.json_name {
             Some(alias) => {
                 quote! {
                     #[serde(rename = #alias)]
-                    #name: Option<$crate::graphics::UvBox>
+                    #snake_variant_name: Option<#crate_path::graphics::UvBox>
                 }
             }
             None => {
                 quote! {
-                    #name: Option<$crate::graphics::UvBox>
+                    #[serde(rename = #variant_name_string)]
+                    #snake_variant_name: Option<#crate_path::graphics::UvBox>
                 }
+            }
+        }
+    });
+
+    let none_checks = variants.iter().map(|variant| {
+        // I dont like the clone but without a much larger solution its the only way
+        let error = format!("Sprite variant {} is not defined in the json file but is defined in {} sprite!", variant.json_name.clone().map_or(variant.name.to_string(), |x| x.value()), name.to_string());
+        let snake_variant_name = Ident::new(variant.name.to_string().as_str().to_snake_case().as_str(), variant.name.span());
+        quote! {
+            if inst.sprites.#snake_variant_name.is_none(){
+                ::tracing::error!(#error);
             }
         }
     });
 
     let render_arms = variants.iter().map(|variant| {
         let variant_name = &variant.name;
+        let snake_variant_name = Ident::new(variant.name.to_string().as_str().to_snake_case().as_str(), variant.name.span());
 
         quote! {
             #name::#variant_name => {
-                match self.sprites.#variant_name {
+                match self.sprites.#snake_variant_name {
                     Some(uv) => {
                         ar.draw_atlas(
                             tk,
@@ -132,8 +155,8 @@ fn expand(input: SpriteStateInput) -> Result<proc_macro2::TokenStream> {
                     }
                     None => {
                         ar.draw_atlas(
-                            tk,
-                            $crate::graphics::UvBox::FULL,
+                            <#crate_path::graphics::asset_mgr::TextureKey as ::slotmap::Key>::null(),
+                            #crate_path::graphics::UvBox::FULL,
                             pos,
                         );
                     }
@@ -156,9 +179,17 @@ fn expand(input: SpriteStateInput) -> Result<proc_macro2::TokenStream> {
         #vis struct #json_name {
             size: [f32; 2],
             sprites: #inner_name,
+        } impl #json_name{
+            #vis fn from_include(s: &str) -> Self {
+                let inst: Self = ::serde_json::from_str(s).unwrap();
+                
+                #(#none_checks)*
+                
+                inst
+            }
         }
 
-        impl $crate::graphics::sprite::SpriteJSON for #json_name {
+        impl #crate_path::graphics::sprite::SpriteJSON for #json_name {
             type ENUM = #name;
 
             fn size(&self) -> ::nalgebra::Vector2<f32> {
@@ -170,13 +201,13 @@ fn expand(input: SpriteStateInput) -> Result<proc_macro2::TokenStream> {
 
             fn render(
                 &self,
-                ar: &mut $crate::graphics::atlasrender::AtlasRenderer,
-                tk: $crate::graphics::asset_mgr::TextureKey,
+                ar: &mut #crate_path::graphics::atlasrender::AtlasRenderer,
+                tk: #crate_path::graphics::asset_mgr::TextureKey,
                 state: &Self::ENUM,
                 pos: (
                     ::nalgebra::Vector2<f32>,
                     ::nalgebra::Vector2<f32>,
-                    $crate::graphics::RenderLayer,
+                    #crate_path::graphics::RenderLayer,
                 ),
             ) {
                 match state {

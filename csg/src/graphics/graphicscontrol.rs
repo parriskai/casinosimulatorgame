@@ -1,7 +1,7 @@
 use nalgebra::{Matrix4, Vector3};
 use strum::EnumCount;
 use wgpu::{Backends, InstanceDescriptor};
-use std::sync::{Arc, Mutex, atomic::AtomicU32};
+use std::sync::{Arc, atomic::AtomicU32};
 use crate::{graphics::RenderLayer, prelude::*, utils::coordinate_transform};
 
 #[derive(Clone)]

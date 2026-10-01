@@ -23,7 +23,7 @@ pub struct InputManager{
                 true
             }
 
-            WindowEvent::Key(k, _sc, a, m) => {
+            WindowEvent::Key(k, _sc, a, _) => {
                 let k = self.keys.entry(*k).or_insert(None);
                 
                 match a{

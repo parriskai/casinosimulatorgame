@@ -1,7 +1,6 @@
 //! `csg::game`
 //! Core game class
-
-use crate::{graphics::window::Window, prelude::*, vfs::modularfs::ModuleFS};
+use crate::{graphics::window::Window, packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS};
 
 /// Core game class, holds all the good stuff
 pub struct Game{
@@ -12,6 +11,8 @@ pub struct Game{
     pub fn create() -> GResult<Game>{
         let mut vfs = ModuleFS::create();
 
+        vfs.mount("assets".into(), Box::new(create_packed_vfs())).unwrap();
+        //vfs.save_to_zip(File::create("out.zip").unwrap()).unwrap();
 
         Ok(Game {
             vfs,

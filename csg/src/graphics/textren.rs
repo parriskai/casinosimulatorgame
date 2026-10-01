@@ -52,7 +52,6 @@ pub struct Font{
     atlas: TextureKey,
     mapping: HashMap<char, AtlasGlyph>,
     missing: AtlasGlyph,
-    size: f32
 } impl Font{
     pub fn create(json: AtlasJSON, atlas: TextureKey) -> Font{
         let mut mapping = HashMap::with_capacity(json.glyphs.len());
@@ -87,8 +86,7 @@ pub struct Font{
         Font{
             atlas,
             mapping,
-            missing,
-            size: json.font_size as f32
+            missing
         }
     }
 

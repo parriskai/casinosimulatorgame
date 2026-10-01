@@ -1,13 +1,10 @@
-use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, box_bg::{BoxBg, BoxBgJSON}, flipbook::{Flipbook, FlipbookJSON}, gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer, textren::{Font, FontTextureAtlas}}, prelude::*};
-use nalgebra::Vector2;
+use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer}, prelude::*};
 // Were going to let this slide
 #[allow(deprecated)]
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use slotmap::Key;
 use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
 use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
 use super::graphicscontrol::GraphicsControl;
-use std::{io::Cursor, sync::Arc, time::{Instant, SystemTime}};
 
 /// The window, and everything on it
 pub struct Window{

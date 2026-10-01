@@ -1,10 +1,10 @@
 use std::{fmt::Debug, io::Cursor, iter::once};
 
-use vfs::{FileSystem, VfsError, VfsFileType, VfsMetadata, error::VfsErrorKind};
+use vfs::{FileSystem, VfsFileType, VfsMetadata, error::VfsErrorKind};
 
 #[derive(Debug)]
 pub enum FileType{
-    Folder(Vec<String>),
+    Folder(&'static [&'static str]),
     File(&'static [u8])
 } impl FileType{
     fn len(&self) -> Option<u64>{
@@ -24,16 +24,14 @@ pub enum FileType{
 
 #[derive(Debug)]
 pub struct ReadOnlyIncludeFS{
-    data: phf::Map<&'static str, FileType>
-} impl ReadOnlyIncludeFS{
-    
+    pub data: &'static phf::Map<&'static str, FileType>
 } impl FileSystem for ReadOnlyIncludeFS{
     fn read_dir(&self, path: &str) -> vfs::VfsResult<Box<dyn Iterator<Item = String> + Send>> {
         match self.data.get(path){
             None => Err(VfsErrorKind::FileNotFound.into()),
 
             Some(FileType::Folder(contents)) => {
-                Ok(Box::new(contents.clone().into_iter()))
+                Ok(Box::new(contents.clone().into_iter().map(|x| String::from(*x))))
             }
 
             Some(FileType::File(_)) => {
@@ -58,11 +56,11 @@ pub struct ReadOnlyIncludeFS{
         }
     }
 
-    fn create_file(&self, path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndWrite + Send>> {
+    fn create_file(&self, _path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndWrite + Send>> {
         Err(VfsErrorKind::NotSupported.into())
     }
 
-    fn append_file(&self, path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndWrite + Send>> {
+    fn append_file(&self, _path: &str) -> vfs::VfsResult<Box<dyn vfs::SeekAndWrite + Send>> {
         Err(VfsErrorKind::NotSupported.into())
     }
 
@@ -86,11 +84,11 @@ pub struct ReadOnlyIncludeFS{
         Ok(self.data.contains_key(path))
     }
 
-    fn remove_file(&self, path: &str) -> vfs::VfsResult<()> {
+    fn remove_file(&self, _path: &str) -> vfs::VfsResult<()> {
         Err(VfsErrorKind::NotSupported.into())
     }
 
-    fn remove_dir(&self, path: &str) -> vfs::VfsResult<()> {
+    fn remove_dir(&self, _path: &str) -> vfs::VfsResult<()> {
         Err(VfsErrorKind::NotSupported.into())
     }
 

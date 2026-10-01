@@ -1,12 +1,13 @@
 {
     "../assets": {
-        "loc": "/"
+        "loc": "/",
+        "final": true
     },
     "../generated_assets": {
         "loc": "/"
     },
     "../temp-assets": {
         "loc": "/",
-        "no-override": true
+        "final": true
     }
 }

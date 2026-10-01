@@ -2,8 +2,7 @@ use crate::{graphics::{RenderLayer, UvBox, asset_mgr::{AssetManager, TextureKey,
 use std::collections::HashMap;
 
 use bytemuck::{Pod, Zeroable};
-use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
-use tracing::instrument::WithSubscriber;
+use nalgebra::{Matrix4, Vector2, Vector3};
 use wgpu::util::DeviceExt;
 
 

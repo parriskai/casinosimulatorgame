@@ -2,12 +2,19 @@
 name = "csg"
 version = "0.1.0"
 edition = "2024"
+build = "build.rs"
+
+[build-dependencies]
+serde_json = {version = "1.0.151", features = ["preserve_order"]}
+indexmap = {version = "2.14.2", features = ["serde"]}
+serde = {version = "1.0.229", features = ["derive"]}
 
 [dependencies]
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
 serde = {version = "1.0.229", features = ["derive"]}
 strum = { version = "0.28.0", features = ["derive"]}
-phf = { version = "0.14.0", features = ["macros"] }
+phf = { version = "0.14.0", features = ["macros"]}
+csg-macros = {path = "../csg-macros"}
 raw-window-handle = "0.6.2"
 serde_json = "1.0.151"
 thiserror = "2.0.20"

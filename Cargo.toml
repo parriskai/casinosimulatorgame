@@ -1,2 +1,10 @@
 [workspace]
 members = ["csg", "csg-macros"]
+resolver = "3"
+
+# SPEED
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
