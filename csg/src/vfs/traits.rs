@@ -5,6 +5,8 @@ use crate::prelude::*;
 use super::join_path;
 
 pub trait CasinoFS: FileSystem {
+    fn should_reload(&self) -> bool;
+    
     fn read_all<'a>(&self, path: &str) -> VfsResult<&'a [u8]>;
 
     fn save_to_zip(&self, path: &str) -> GResult<()>{

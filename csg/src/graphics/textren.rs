@@ -1,4 +1,4 @@
-use crate::{graphics::{RenderLayer, UvBox, asset_mgr::TextureKey, atlasrender::AtlasRenderer}};
+use crate::graphics::{RenderLayer, UvBox, assets::{gputexture::GpuTexture, manager::AssetKey}, atlasrender::AtlasRenderer};
 use std::{collections::HashMap, io::Cursor, sync::Arc};
 use serde::Deserialize;
 use nalgebra::Vector2;
@@ -49,11 +49,11 @@ pub struct FontTextureAtlas{
 }
 
 pub struct Font{
-    atlas: TextureKey,
+    atlas: AssetKey<GpuTexture>,
     mapping: HashMap<char, AtlasGlyph>,
     missing: AtlasGlyph,
 } impl Font{
-    pub fn create(json: AtlasJSON, atlas: TextureKey) -> Font{
+    pub fn create(json: AtlasJSON, atlas: AssetKey<GpuTexture>) -> Font{
         let mut mapping = HashMap::with_capacity(json.glyphs.len());
         
         for glyph in json.glyphs{

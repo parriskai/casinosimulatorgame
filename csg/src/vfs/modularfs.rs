@@ -447,6 +447,10 @@ pub struct ModuleFS{
         }
     }
 } impl CasinoFS for ModuleFS{
+    fn should_reload(&self) -> bool {
+        self.mounts.iter().any(|(_, mt)| mt.should_reload())
+    }
+    
     fn read_all<'a>(&self, path: &str) -> VfsResult<&'a [u8]> {
         match self.get(path) {
             LocationType::Root => {

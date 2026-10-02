@@ -155,7 +155,7 @@ fn expand_sprite_state(input: SpriteStateInput) -> Result<proc_macro2::TokenStre
                     }
                     None => {
                         ar.draw_atlas(
-                            <#crate_path::graphics::asset_mgr::TextureKey as ::slotmap::Key>::null(),
+                            <#crate_path::graphics::assets::manager::AssetKey<#crate_path::graphics::assets::gputexture::GpuTexture> as ::slotmap::Key>::null(),
                             #crate_path::graphics::UvBox::FULL,
                             pos,
                         );
@@ -170,12 +170,12 @@ fn expand_sprite_state(input: SpriteStateInput) -> Result<proc_macro2::TokenStre
             #(#variant_names),*
         }
 
-        #[derive(Debug, ::serde::Deserialize)]
+        #[derive(Debug, Default, ::serde::Deserialize)]
         struct #inner_name {
             #(#fields),*
         }
 
-        #[derive(Debug, ::serde::Deserialize)]
+        #[derive(Debug, Default, ::serde::Deserialize)]
         #vis struct #json_name {
             size: [f32; 2],
             sprites: #inner_name,
@@ -187,7 +187,33 @@ fn expand_sprite_state(input: SpriteStateInput) -> Result<proc_macro2::TokenStre
                 
                 inst
             }
+            #vis fn load(data: &[u8]) -> #crate_path::errors::GResult<Self>{
+                Ok(
+                    Self::from_include(
+                        <Result<&str, std::str::Utf8Error> as #crate_path::errors::GeneralizeError<&str>>::g_err(str::from_utf8(data))?
+                    )
+                )
+            }
+        } impl #crate_path::graphics::assets::ReloadableAsset for #json_name{
+            fn reload(&mut self, data: &[u8]) -> #crate_path::errors::GResult<()> {
+                match #json_name::load(data){
+                    Ok(data) => {
+                        std::mem::replace(self, data);
+                        Ok(())
+                    }
+                    Err(e) => {
+                        std::mem::replace(self, <#json_name as #crate_path::graphics::assets::DefaultAsset>::default());
+                        Err(e)
+                    }
+                }
+            }
         }
+        impl #crate_path::graphics::assets::DefaultAsset for #json_name{
+            fn default() -> Self {
+                #json_name{size: [16.,16.], .. Default::default()}
+            }
+        }
+        inventory::submit!(#crate_path::graphics::assets::AssetDefault::create::<#json_name>());
 
         impl #crate_path::graphics::sprite::SpriteJSON for #json_name {
             type ENUM = #name;
@@ -202,7 +228,7 @@ fn expand_sprite_state(input: SpriteStateInput) -> Result<proc_macro2::TokenStre
             fn render(
                 &self,
                 ar: &mut #crate_path::graphics::atlasrender::AtlasRenderer,
-                tk: #crate_path::graphics::asset_mgr::TextureKey,
+                tk: #crate_path::graphics::assets::manager::AssetKey<#crate_path::graphics::assets::gputexture::GpuTexture>,
                 state: &Self::ENUM,
                 pos: (
                     ::nalgebra::Vector2<f32>,

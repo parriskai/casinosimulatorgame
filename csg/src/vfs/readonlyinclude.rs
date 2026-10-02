@@ -118,6 +118,8 @@ pub struct ReadOnlyIncludeFS{
         Err(VfsErrorKind::NotSupported.into())
     }
 } impl CasinoFS for ReadOnlyIncludeFS{
+    fn should_reload(&self) -> bool {false}
+    
     fn read_all<'a>(&self, path: &str) -> vfs::VfsResult<&'a [u8]> {
         match self.data.get(path){
             None => Err(VfsErrorKind::FileNotFound.into()),

@@ -3,6 +3,9 @@
 //! 
 //! You probably dont need to include this if you are already using [`crate::prelude`]
 //! 
+use std::str::Utf8Error;
+
+use image::ImageError;
 use thiserror::Error;
 use vfs::VfsError;
 use zip::result::ZipError;
@@ -72,6 +75,24 @@ impl Into<GError> for std::io::Error{
     }
 }
 
+impl Into<GError> for ImageError{
+    fn into(self) -> GError {
+        GError::ImageError(self)
+    }
+}
+
+impl Into<GError> for ::serde_json::Error{
+    fn into(self) -> GError {
+        GError::SerdeError(self)
+    }
+}
+
+impl Into<GError> for Utf8Error{
+    fn into(self) -> GError {
+        GError::Utf8Error(self)
+    }
+}
+
 /// General Error type
 #[derive(Error, Debug)]
 pub enum GError{
@@ -84,19 +105,27 @@ pub enum GError{
     #[error("Zip Error ({0})")]
     ZipError(ZipError),
     #[error("IO Error ({0}")]
-    IOError(std::io::Error)
+    IOError(std::io::Error),
+    #[error("Image Error ({0})")]
+    ImageError(ImageError),
+    #[error("Serde Error ({0})")]
+    SerdeError(::serde_json::Error),
+    #[error("UTF-8 Error ({0})")]
+    Utf8Error(Utf8Error),
+    #[error("Generic Error")]
+    GenericErrror
 }
 
 /// A thin wrapper arround rusts Result, returning either sucess or a game error
 pub type GResult<T> = Result<T, GError>;
 
 /// Helper trait, into doesnt really work for our use case so we have our own trait
-pub trait GeneralizeError<T, E>{
+pub trait GeneralizeError<T>{
     /// Generalize a sub error into a broad Game Error
     fn g_err(self) -> GResult<T>;
 }
 
-impl<T, E> GeneralizeError<T, E> for Result<T, E> where  E: Into<GError>{
+impl<T, E> GeneralizeError<T> for Result<T, E> where  E: Into<GError>{
     fn g_err(self) -> GResult<T> {
         self.map_err(|e| e.into())
     }

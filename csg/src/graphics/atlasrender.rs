@@ -1,4 +1,4 @@
-use crate::{graphics::{RenderLayer, UvBox, asset_mgr::{AssetManager, TextureKey, TextureOrMissing}, graphicscontrol::GraphicsControl}, utils::{IntoGpuMatrix, coordinate_transform}};
+use crate::{graphics::{RenderLayer, UvBox, assets::{gputexture::GpuTexture, manager::{AssetKey, AssetManager}}, graphicscontrol::GraphicsControl}, utils::{IntoGpuMatrix, coordinate_transform}};
 use std::collections::HashMap;
 
 use bytemuck::{Pod, Zeroable};
@@ -45,7 +45,7 @@ pub struct AtlasRenderer{
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
 
-    buckets: HashMap<(RenderLayer, TextureKey), AtlasBucket>,
+    buckets: HashMap<(RenderLayer, AssetKey<GpuTexture>), AtlasBucket>,
 
     world_to_cvv: Matrix4<f32>,
 
@@ -214,7 +214,7 @@ pub struct AtlasRenderer{
         }
     }
 
-    pub fn draw_atlas(&mut self, tkey: TextureKey, uv: UvBox, position: (Vector2<f32>, Vector2<f32>, RenderLayer)) {
+    pub fn draw_atlas(&mut self, tkey: AssetKey<GpuTexture>, uv: UvBox, position: (Vector2<f32>, Vector2<f32>, RenderLayer)) {
         let bucket = self
             .buckets
             .entry((position.2, tkey))
@@ -260,14 +260,14 @@ pub struct AtlasRenderer{
                 continue;
             }
 
-            let texture = match asset_mgr.texture_by_id(*texture_key){
-                TextureOrMissing::Texture(t) => t,
-                TextureOrMissing::Missing(t) => {
+            let texture = match asset_mgr.get_asset(*texture_key){
+                Some(t) => t,
+                None => {
                     // Full Missing Texture
                     for v in bucket.instances.iter_mut(){
                         v.uv = UvBox::FULL
                     }
-                    t
+                    asset_mgr.get_default().unwrap()
                 }
             };
 

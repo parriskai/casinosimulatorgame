@@ -80,3 +80,16 @@ pub fn coordinate_transform(src_min: Vector3<f32>, src_max: Vector3<f32>, dst_mi
         * Matrix4::new_nonuniform_scaling(&scale)
         * Matrix4::new_translation(&-src_min)
 }
+
+
+pub trait IntoPair<A, B>{
+    fn into_pair(self) -> (A, B);
+}
+
+impl<A, B> IntoPair<A, B> for (A, B){
+    fn into_pair(self) -> (A, B) {self}
+}
+
+impl <A> IntoPair<A, ()> for A{
+    fn into_pair(self) -> (A, ()) {(self, ())}
+}

@@ -1,10 +1,12 @@
 //! `csg::game`
 //! Core game class
+use std::sync::Arc;
+
 use crate::{graphics::window::Window, vfs::packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS};
 
 /// Core game class, holds all the good stuff
 pub struct Game{
-    vfs: ModuleFS,
+    vfs: Arc<dyn CasinoFS>,
     window: Window
 } impl Game{
     /// Create the game instance
@@ -12,11 +14,11 @@ pub struct Game{
         let mut vfs = ModuleFS::create();
 
         vfs.mount("assets".into(), Box::new(create_packed_vfs())).unwrap();
-        //vfs.save_to_zip(File::create("out.zip").unwrap()).unwrap();
 
+        let avfs = Arc::new(vfs);
         Ok(Game {
-            vfs,
-            window: Window::create()?
+            window: Window::create(avfs.clone())?,
+            vfs: avfs
         })
     }
 

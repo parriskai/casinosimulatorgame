@@ -1,7 +1,6 @@
 pub mod graphicscontrol;
 pub mod gamerenderer;
 pub mod atlasrender;
-pub mod asset_mgr;
 pub mod input_mgr;
 pub mod renderer;
 pub mod flipbook;
@@ -9,6 +8,7 @@ pub mod textren;
 pub mod window;
 pub mod sprite;
 pub mod box_bg;
+pub mod assets;
 
 use bytemuck::{Pod, Zeroable};
 use serde::Deserialize;
@@ -27,6 +27,10 @@ pub struct UvBox{
 } impl core::fmt::Debug for UvBox{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("UvBox[({}, {}) -> ({}, {})]", self.u0, self.v0, self.u1, self.v1))
+    }
+} impl Default for UvBox{
+    fn default() -> Self {
+        UvBox::FULL
     }
 }
 

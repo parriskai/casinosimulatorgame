@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer}, prelude::*};
 // Were going to let this slide
 #[allow(deprecated)]
@@ -9,7 +11,7 @@ use super::graphicscontrol::GraphicsControl;
 /// The window, and everything on it
 pub struct Window{
     gr: GameRenderer,
-    im: InputManager,
+    
     pub renderer: Renderer,
     surface: Surface<'static>,
     config: SurfaceConfiguration,
@@ -19,7 +21,7 @@ pub struct Window{
 
     glfw: Glfw,
 } impl Window {
-    pub fn create() -> GResult<Window>{
+    pub fn create(vfs: Arc<dyn CasinoFS>) -> GResult<Window>{
         let mut glfw = glfw::init(glfw::fail_on_errors).g_err()?;
 
         let (pwindow, event) = Self::create_glfw_window(&mut glfw)?;
@@ -28,10 +30,9 @@ pub struct Window{
         let gc = pollster::block_on(unsafe{GraphicsControl::create(pwindow.get_framebuffer_size())})?;
 
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
-        let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format);
+        let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format, vfs);
 
-        let im = InputManager::create();
-        let gr = GameRenderer::create(&mut renderer);
+        let gr = GameRenderer::create(&mut renderer)?;
 
         Ok(
             Window {
@@ -41,8 +42,7 @@ pub struct Window{
                 surface,
                 config,
                 renderer,
-                gr,
-                im
+                gr
             }
         )
     }
@@ -137,7 +137,7 @@ pub struct Window{
                 
                 e => {
                     // If IM doesnt handle it
-                    if !self.im.handle_event(&e){
+                    if !self.renderer.input_manager.handle_event(&e){
                         tracing::warn!("Unhandled window event {e:?}");
                     }
                 }
@@ -201,11 +201,7 @@ pub struct Window{
                 },
             ).forget_lifetime();
             
-            //let ss = self.pwindow.get_framebuffer_size();
-
-            //self.renderer.atlas_renderer.draw_atlas(TextureKey::null(), UvBox::FULL, (Vector2::zeros(), Vector2::new(ss.0 as f32, ss.1 as f32), RenderLayer::Clear));
-
-            self.gr.frame(&mut self.renderer, &self.im);
+            self.gr.frame(&mut self.renderer);
 
             self.renderer.finish(&mut render_pass);
         }
@@ -216,7 +212,7 @@ pub struct Window{
 
     pub fn frame(&mut self){
         self.handle_events();
-        self.im.tick();
+        self.renderer.input_manager.tick();
         self.render();
         
         //self.pwindow.swap_buffers();

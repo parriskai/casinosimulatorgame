@@ -174,7 +174,7 @@ fn main(){
     out_file.write(b"use crate::vfs::readonlyinclude::{ReadOnlyIncludeFS, FileType};\n").unwrap();
     out_file.write(b"use phf::phf_map;\n").unwrap();
     out_file.write(b"\n").unwrap();
-    out_file.write(b"const PACKED: phf::Map<&'static str, FileType> = phf_map!{\n").unwrap();
+    out_file.write(b"static PACKED: phf::Map<&'static str, FileType> = phf_map!{\n").unwrap();
 
     let mut items: Vec<_> = table.into_iter().collect();
 

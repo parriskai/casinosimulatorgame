@@ -1,6 +1,12 @@
+use std::sync::Arc;
+
+use image::DynamicImage;
 use wgpu::{RenderPass, Texture, TextureFormat, TextureView};
 
-use crate::graphics::{asset_mgr::AssetManager, atlasrender::AtlasRenderer, graphicscontrol::GraphicsControl};
+use crate::graphics::assets::DefaultAsset;
+use crate::graphics::assets::gputexture::GpuTexture;
+use crate::graphics::input_mgr::InputManager;
+use crate::{prelude::*, graphics::{assets::manager::AssetManager, atlasrender::AtlasRenderer, graphicscontrol::GraphicsControl}};
 
 pub struct Renderer{
     pub gc: GraphicsControl,
@@ -8,19 +14,25 @@ pub struct Renderer{
     pub atlas_renderer: AtlasRenderer,
     
     pub depth_texture: Texture,
-    pub depth_view: TextureView
+    pub depth_view: TextureView,
+
+    pub input_manager: InputManager
 } impl Renderer{
-    pub fn create(gc: GraphicsControl, sf: TextureFormat) -> Renderer{
-        let asset_manager = AssetManager::create(gc.clone());
+    pub fn create(gc: GraphicsControl, sf: TextureFormat, vfs: Arc<dyn CasinoFS>) -> Renderer{
+        let mut asset_manager = AssetManager::create(vfs);
+        asset_manager.set_default(GpuTexture::from_di(gc.clone(), DefaultAsset::default(), "MISSING TEXTURE".into()));
+
         let atlas_renderer  = AtlasRenderer::create(gc.clone(), sf);
         let (depth_texture, depth_view) = Self::create_depth_texture(&gc);
-
+        
+        let input_manager  =InputManager::create();
         Renderer {
             gc,
             asset_manager,
             atlas_renderer,
             depth_texture,
-            depth_view
+            depth_view,
+            input_manager
         }
     }
 

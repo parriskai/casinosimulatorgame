@@ -5,12 +5,18 @@ use nalgebra::Vector2;
 
 pub struct InputManager{
     keys: HashMap<Key, Option<Instant>>,
-    cursor: Vector2<f32>
+    cursor: Vector2<f32>,
+    frame_time: Instant,
+    total_time: f64,
+    delta_time: f64
 } impl InputManager {
     pub fn create() -> InputManager{
         InputManager {
             cursor: Vector2::zeros(),
-            keys: HashMap::new()
+            keys: HashMap::new(),
+            frame_time: Instant::now(),
+            total_time: 0.,
+            delta_time: 0.,
         }
     }
 
@@ -45,6 +51,9 @@ pub struct InputManager{
 
     pub fn tick(&mut self){
         let cur = Instant::now();
+        self.delta_time = (cur - self.frame_time).as_secs_f64();
+        self.frame_time = cur;
+
         for (k,v) in self.keys.iter_mut(){
             match v{
                 Some(t) => {
@@ -60,5 +69,13 @@ pub struct InputManager{
 
     pub fn key_down(&self, k: &Key) -> bool{
         self.keys.get(k).unwrap_or(&None).is_some()
+    }
+
+    pub fn get_time(&self) -> Instant{
+        self.frame_time
+    }
+
+    pub fn get_delta_time(&self) -> f64{
+        self.delta_time
     }
 }
