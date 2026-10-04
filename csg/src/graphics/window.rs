@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer, simulation::world::World}, prelude::*};
+use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer },prelude::*, simulation::world::World};
 // Were going to let this slide
 #[allow(deprecated)]
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
@@ -201,7 +201,7 @@ pub struct Window{
                 },
             ).forget_lifetime();
             
-            self.gr.frame(&mut self.renderer);
+            self.gr.frame(&mut self.renderer, &world);
 
             self.renderer.finish(&mut render_pass);
         }

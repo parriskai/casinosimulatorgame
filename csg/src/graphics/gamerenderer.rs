@@ -1,7 +1,7 @@
 use glfw::Key;
 use nalgebra::Vector2;
 
-use crate::{graphics::{assets::gputexture::load_texture, renderer::Renderer, sprite::{Sprite, SpriteInstance}}, simulation::{tile::{FloorType, TileGrid, TILE_SIZE}, world::World}, prelude::*};
+use crate::{graphics::{RenderLayer, assets::gputexture::load_texture, renderer::Renderer, sprite::{Sprite, SpriteInstance}},  prelude::*, simulation::{tiles::{FloorType, TileGrid, TILE_SIZE}, world::World}};
 use csg_macros::build_sprite_state_enum;
 
 build_sprite_state_enum!{
@@ -29,7 +29,7 @@ pub struct GameRenderer{
         let ps = Sprite::create(atlas, player_json);
         let pi = SpriteInstance::create(5., Vector2::zeros(), super::RenderLayer::Debug, Player::South);
 
-        let floor_atlas = ren.asset_manager.create_asset("assets/floor.pg", load_texture(ren.gc.clone(), "FLOOR".into()))?;
+        let floor_atlas = ren.asset_manager.create_asset("assets/floor.png", load_texture(ren.gc.clone(), "FLOOR".into()))?;
         let floor_json = ren.asset_manager.create_json_asset("assets/floor.json")?;
         let floor_sprite = Sprite::create(floor_atlas, floor_json);
         Ok(
@@ -58,7 +58,7 @@ pub struct GameRenderer{
         self.draw_floors(ren, world);
         self.pi.render(&self.ps, ren);
     }
-    fn draw_floors(&self, ren: &mut Renderer, world &World){
+    fn draw_floors(&self, ren: &mut Renderer, world: &World){
         for y in 0..world.grid.height as i32{
             for x in 0..world.grid.width as i32{
                 let tile = world.grid.get(x, y).unwrap();

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use glfw::MouseButton;
 
-use crate::{graphics::window::Window, vfs::packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS, simulation::{tiles::{FloorType, TileGrid}, word::Word}};
+use crate::{graphics::window::Window, vfs::packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS, simulation::{tiles::{FloorType, TileGrid}, world::World}};
 
 /// Core game class, holds all the good stuff
 pub struct Game{
