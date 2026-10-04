@@ -6,6 +6,7 @@
 //! - Then create the game instance `csg::game::Game::create()`
 //! - Then run it `Game.run()`
 
+pub mod simulation;
 pub mod graphics;
 pub mod logging;
 pub mod prelude;

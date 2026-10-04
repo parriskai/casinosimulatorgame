@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer}, prelude::*};
+use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer, simulation::world::World}, prelude::*};
 // Were going to let this slide
 #[allow(deprecated)]
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
@@ -145,7 +145,7 @@ pub struct Window{
         }
     }
 
-    fn render(&mut self){
+    fn render(&mut self, world: &World){
         // GET Render Target
         let output = match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(tex) => tex,
@@ -210,10 +210,10 @@ pub struct Window{
         self.renderer.gc.queue.present(output);
     }
 
-    pub fn frame(&mut self){
+    pub fn frame(&mut self, world: &World){
         self.handle_events();
         self.renderer.input_manager.tick();
-        self.render();
+        self.render(world);
         
         //self.pwindow.swap_buffers();
     }
