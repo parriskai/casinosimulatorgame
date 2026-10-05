@@ -1,7 +1,7 @@
 use glfw::Key;
 use nalgebra::Vector2;
 
-use crate::{graphics::{RenderLayer, assets::gputexture::load_texture, renderer::Renderer, sprite::{Sprite, SpriteInstance}},  prelude::*, simulation::{tiles::{FloorType, TileGrid, TILE_SIZE}, world::World}};
+use crate::{graphics::{RenderLayer, UvBox, assets::{gputexture::{GpuTexture, load_texture}, manager::AssetKey}, renderer::Renderer, sprite::{Sprite, SpriteInstance}}, prelude::*, simulation::{tiles::{FloorType, TILE_SIZE, TileGrid}, world::World}};
 use csg_macros::build_sprite_state_enum;
 
 build_sprite_state_enum!{
@@ -21,7 +21,9 @@ build_sprite_state_enum!{
 pub struct GameRenderer{
     floor_sprite: Sprite<FloorJSON>,
     ps: Sprite<PlayerJSON>,
-    pi: SpriteInstance<PlayerJSON>
+    pi: SpriteInstance<PlayerJSON>,
+
+    dot: AssetKey<GpuTexture>
 } impl GameRenderer {
     pub fn create(ren: &mut Renderer) -> GResult<GameRenderer>{
         let atlas  =ren.asset_manager.create_asset("assets/player.png", load_texture(ren.gc.clone(), "PLAYER".into()))?;
@@ -32,11 +34,14 @@ pub struct GameRenderer{
         let floor_atlas = ren.asset_manager.create_asset("assets/floor.png", load_texture(ren.gc.clone(), "FLOOR".into()))?;
         let floor_json = ren.asset_manager.create_json_asset("assets/floor.json")?;
         let floor_sprite = Sprite::create(floor_atlas, floor_json);
+
+        let dot = ren.asset_manager.create_asset("assets/dot.png", load_texture(ren.gc.clone(), "DOT".into()))?;
         Ok(
             GameRenderer {
                 ps,
                 pi,
-                floor_sprite
+                floor_sprite,
+                dot
             }
         )
     }
@@ -55,9 +60,15 @@ pub struct GameRenderer{
             self.pi.state = Player::North;
         }
 
+        self.draw_dot(ren);
         self.draw_floors(ren, world);
         self.draw_drag_preview(ren, drag);
         self.pi.render(&self.ps, ren);
+    }
+    fn draw_dot(&self, ren: &mut Renderer){
+        let mouse = ren.input_manager.cursor();
+        let half_size = Vector2::new(16., 16.);
+        ren.atlas_renderer.draw_atlas(self.dot, UvBox::FULL, (mouse - half_size, mouse + half_size, RenderLayer::Debug));
     }
     fn draw_floors(&self, ren: &mut Renderer, world: &World){
         for y in 0..world.grid.height as i32{

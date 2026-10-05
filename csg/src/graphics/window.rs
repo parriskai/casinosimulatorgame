@@ -212,8 +212,8 @@ pub struct Window{
     }
 
     pub fn frame(&mut self, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
+        self.renderer.input_manager.tick(&self.pwindow);
         self.handle_events();
-        self.renderer.input_manager.tick();
         self.render(world, drag);
         
         //self.pwindow.swap_buffers();
