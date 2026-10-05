@@ -208,6 +208,10 @@ pub struct GpuTexture {
     pub fn bind_group(&self) -> &BindGroup{
         &self.bind_group
     }
+
+    pub fn name(&self) -> &str{
+        &self.name
+    }
 }
 
 pub fn load_texture(gc: GraphicsControl, name: String) -> impl FnOnce(&[u8]) -> GResult<GpuTexture>{

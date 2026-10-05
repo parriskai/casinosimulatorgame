@@ -119,7 +119,7 @@ pub struct AssetManager{
     /// None if there is no default
     pub fn get_default<T: 'static>(&self) -> Option<&T>{
         match self.defaults.get(&TypeId::of::<T>()){
-            Some(any) => Some(unsafe {*any.downcast_ref_unchecked()}),
+            Some(any) => Some(unsafe {any.downcast_ref_unchecked()}),
             None => None
         }
     }

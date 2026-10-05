@@ -42,16 +42,16 @@ pub struct GameRenderer{
     }
     pub fn frame(&mut self, ren: &mut Renderer, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
         if ren.input_manager.key_down(&Key::Right){
-            self.pi.pos.x += 10.;
+            self.pi.pos.x += 20.;
             self.pi.state = Player::East;
         } else if ren.input_manager.key_down(&Key::Left){
-            self.pi.pos.x -= 10.;
+            self.pi.pos.x -= 20.;
             self.pi.state = Player::West;
         } else if ren.input_manager.key_down(&Key::Down){
-            self.pi.pos.y += 10.;
+            self.pi.pos.y += 20.;
             self.pi.state = Player::South;
         } else if ren.input_manager.key_down(&Key::Up){
-            self.pi.pos.y -= 10.;
+            self.pi.pos.y -= 20.;
             self.pi.state = Player::North;
         }
 
