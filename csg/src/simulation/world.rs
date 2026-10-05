@@ -1,6 +1,6 @@
-use rand::Rng;
 use nalgebra::Vector2;
 use super::npc::{Npc, NpcState};
+use super::tiles::TileGrid;
 
 pub struct SlotMachines{
     pub pos: Vector2<f32>
@@ -11,13 +11,14 @@ pub struct World{
     pub machines: Vec<SlotMachines>,
     pub house_money: i64,
     pub entrance: Vector2<f32>,
+    pub grid: TileGrid,
 }
 
 const HOUSE_START_MONEY: i64 = 3000;
 const WALLET_MIN: i64 = 500; 
 const WALLET_MAX: i64 = 500_000;
 const SPIN_TIME: f32 = 10.0; //time it takes to play slots
-const WALK_SPEED: f32 = 10.0; // in px
+const WALK_SPEED: f32 = 10.0; 
 const WIN_CHANCE: f32 = 5.0;
 const BET: i64 = 500;
 
@@ -28,6 +29,7 @@ impl World{
             machines: vec![SlotMachines {pos: Vector2::new(300.0, 200.0)}],
             house_money: HOUSE_START_MONEY,
             entrance: Vector2::new(0.0, 0.0),
+            grid: TileGrid::new(64, 64)
         }
     } 
 
@@ -35,14 +37,13 @@ impl World{
 
         let new_npc = Npc{
             pos: self.entrance,
-            wallet: rand::thread_rng().gen_range(WALLET_MIN..WALLET_MAX),
+            wallet: rand::random_range(WALLET_MIN..WALLET_MAX),
             state: NpcState::WalkingTo{machine: 0},
         };
 
         self.npcs.push(new_npc);
     }
     pub fn update(&mut self, dt: f32){
-        use crate::graphics::{RenderLayer, UvBox, asset_mgr::TextureKey};
         for npc in &mut self.npcs{
             match npc.state{
                 NpcState::WalkingTo{machine} => {
@@ -64,10 +65,10 @@ impl World{
                     }
                     npc.wallet -= BET;
                     self.house_money += BET as i64;
-                    if (rand::thread_rng().random_range(0..100) as f32) < WIN_CHANCE{
+                    if (rand::random_range(0..100) as f32) < WIN_CHANCE{
                         npc.wallet += BET * 2;
                         self.house_money -= (BET * 2) as i64;
-                    }
+                   }
                     npc.state = NpcState::Playing{machine, timer: 0.0}
                 }
                 NpcState::Leaving => {

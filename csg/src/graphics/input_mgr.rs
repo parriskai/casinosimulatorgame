@@ -1,10 +1,11 @@
 use std::{collections::HashMap, time::Instant};
 
-use glfw::{Action, Key, WindowEvent};
+use glfw::{Action, Key, WindowEvent, MouseButton};
 use nalgebra::Vector2;
 
 pub struct InputManager{
     keys: HashMap<Key, Option<Instant>>,
+    mouse: HashMap<MouseButton, bool>,
     cursor: Vector2<f32>,
     frame_time: Instant,
     total_time: f64,
@@ -14,6 +15,7 @@ pub struct InputManager{
         InputManager {
             cursor: Vector2::zeros(),
             keys: HashMap::new(),
+            mouse: HashMap::new(),
             frame_time: Instant::now(),
             total_time: 0.,
             delta_time: 0.,
@@ -29,6 +31,14 @@ pub struct InputManager{
                 true
             }
 
+            WindowEvent::MouseButton(button, action, _) => {
+                if *action == Action::Press{
+                    self.mouse.insert(*button, true);
+                }else{
+                    self.mouse.insert(*button, false);
+                }
+                true
+            }
             WindowEvent::Key(k, _sc, a, _) => {
                 let k = self.keys.entry(*k).or_insert(None);
                 
@@ -68,7 +78,15 @@ pub struct InputManager{
     }
 
     pub fn key_down(&self, k: &Key) -> bool{
-        self.keys.get(k).unwrap_or(&None).is_some()
+        self.keys.get(&k).unwrap_or(&None).is_some()
+    }
+
+    pub fn mouse_down(&self, button: MouseButton) -> bool{
+        *self.mouse.get(&button).unwrap_or(&false)
+    }
+
+    pub fn cursor(&self) -> Vector2<f32>{
+        self.cursor
     }
 
     pub fn get_time(&self) -> Instant{
