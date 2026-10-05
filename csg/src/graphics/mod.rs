@@ -40,6 +40,7 @@ pub enum RenderLayer{
     /// Bottom most layer, used to draw the missing texture behind everything else
     Clear,
     Floor,
+    FloorPreview,
     /// Debug layer, rendered above everything else
     Debug,
 }

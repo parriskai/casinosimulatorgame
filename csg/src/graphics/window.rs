@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer },prelude::*, simulation::world::World};
+use nalgebra::Vector2;
 // Were going to let this slide
 #[allow(deprecated)]
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
@@ -145,7 +146,7 @@ pub struct Window{
         }
     }
 
-    fn render(&mut self, world: &World){
+    fn render(&mut self, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
         // GET Render Target
         let output = match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(tex) => tex,
@@ -201,7 +202,7 @@ pub struct Window{
                 },
             ).forget_lifetime();
             
-            self.gr.frame(&mut self.renderer, &world);
+            self.gr.frame(&mut self.renderer, &world, drag);
 
             self.renderer.finish(&mut render_pass);
         }
@@ -210,10 +211,10 @@ pub struct Window{
         self.renderer.gc.queue.present(output);
     }
 
-    pub fn frame(&mut self, world: &World){
+    pub fn frame(&mut self, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
         self.handle_events();
         self.renderer.input_manager.tick();
-        self.render(world);
+        self.render(world, drag);
         
         //self.pwindow.swap_buffers();
     }

@@ -40,7 +40,7 @@ pub struct GameRenderer{
             }
         )
     }
-    pub fn frame(&mut self, ren: &mut Renderer, world: &World){
+    pub fn frame(&mut self, ren: &mut Renderer, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
         if ren.input_manager.key_down(&Key::Right){
             self.pi.pos.x += 10.;
             self.pi.state = Player::East;
@@ -56,6 +56,7 @@ pub struct GameRenderer{
         }
 
         self.draw_floors(ren, world);
+        self.draw_drag_preview(ren, drag);
         self.pi.render(&self.ps, ren);
     }
     fn draw_floors(&self, ren: &mut Renderer, world: &World){
@@ -72,4 +73,20 @@ pub struct GameRenderer{
             }
         }
     }
+    fn draw_drag_preview(&self, ren: &mut Renderer, drag: Option<(Vector2<i32>, Vector2<i32>)>){
+        let Some((start,end)) = drag else{
+            return;
+        };
+        let left = start.x.min(end.x);
+        let right = start.x.max(end.x);
+        let top = start.y.min(end.y);
+        let bottom = start.y.max(end.y);
+
+        for y in top..=bottom{
+            for x in left..=right{
+                let pos = TileGrid::tile_to_world(Vector2::new(x,y));
+                self.floor_sprite.render(ren, &Floor::Carpet, (pos, pos + Vector2::repeat(TILE_SIZE), RenderLayer::FloorPreview));
+            }
+        }
+    } 
 }
