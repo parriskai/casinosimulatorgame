@@ -1,4 +1,12 @@
-use crate::graphics::{RenderLayer, assets::{gputexture::GpuTexture, manager::AssetKey}, atlasrender::AtlasRenderer, renderer::Renderer};
+use crate::graphics::{
+    RenderLayer,
+    assets::{
+        gputexture::GpuTexture,
+        manager::AssetKey
+    },
+    atlasrender::AtlasRenderer,
+    renderer::Renderer
+};
 use nalgebra::Vector2;
 
 pub trait SpriteJSON {

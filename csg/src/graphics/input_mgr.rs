@@ -1,26 +1,24 @@
-use std::{collections::HashMap, time::Instant};
-
+use std::{time::Instant};
 use glfw::{Action, Key, Modifiers, MouseButton, PWindow, WindowEvent};
 use nalgebra::Vector2;
+use ahash::AHashMap;
 
 pub struct InputManager{
-    keys: HashMap<Key, Option<Instant>>,
-    mouse: HashMap<MouseButton, bool>,
+    keys: AHashMap<Key, Option<Instant>>,
+    mouse: AHashMap<MouseButton, bool>,
     modifiers: Modifiers,
     cursor: Vector2<f32>,
     frame_time: Instant,
-    total_time: f64,
     delta_time: f64,
     scale: (f32, f32),
 } impl InputManager {
     pub fn create() -> InputManager{
         InputManager {
             cursor: Vector2::zeros(),
-            keys: HashMap::new(),
-            mouse: HashMap::new(),
+            keys: AHashMap::new(),
+            mouse: AHashMap::new(),
             modifiers: Modifiers::empty(),
             frame_time: Instant::now(),
-            total_time: 0.,
             delta_time: 0.,
             scale: (1., 1.)
         }
@@ -99,8 +97,6 @@ pub struct InputManager{
         self.frame_time = cur;
         self.modifiers = Self::poll_mods(pw);
         self.scale = pw.get_content_scale();
-        println!("{}x{}", self.scale.0, self.scale.1);
-
         for (k,v) in self.keys.iter_mut(){
             match v{
                 Some(t) => {

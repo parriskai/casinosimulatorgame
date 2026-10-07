@@ -5,4 +5,13 @@
 //! use crate::prelude::*;
 //! ```
 
-pub use crate::{vfs::traits::CasinoFS, errors::{GError, GResult, GeneralizeError, GLFWError, WGPUError}};
+pub use crate::{
+    vfs::traits::CasinoFS,
+    errors::{
+        GError,
+        GResult,
+        GeneralizeError,
+        GLFWError,
+        WGPUError
+    }
+};

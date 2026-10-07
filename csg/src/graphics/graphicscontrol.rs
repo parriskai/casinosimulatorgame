@@ -1,8 +1,21 @@
-use nalgebra::{Matrix4, Vector3};
+use crate::{
+    graphics::RenderLayer,
+    prelude::*,
+    utils::coordinate_transform
+};
+use nalgebra::{
+    Matrix4,
+    Vector3
+};
+use wgpu::{
+    Backends,
+    InstanceDescriptor
+};
+use std::sync::{
+    Arc,
+    atomic::AtomicU32
+};
 use strum::EnumCount;
-use wgpu::{Backends, InstanceDescriptor};
-use std::sync::{Arc, atomic::AtomicU32};
-use crate::{graphics::RenderLayer, prelude::*, utils::coordinate_transform};
 
 #[derive(Clone)]
 pub struct GraphicsControl{

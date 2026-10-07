@@ -1,13 +1,33 @@
-use std::sync::Arc;
-
-use crate::{graphics::{gamerenderer::GameRenderer, input_mgr::InputManager, renderer::Renderer },prelude::*, simulation::world::World};
-use nalgebra::Vector2;
+use crate::{
+    graphics::{
+        gamerenderer::GameRenderer,
+        renderer::Renderer
+    },
+    prelude::*,
+    simulation::world::World
+};
 // Were going to let this slide
 #[allow(deprecated)]
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration};
-use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
+use raw_window_handle::{
+    HasRawDisplayHandle,
+    HasRawWindowHandle
+};
+use wgpu::{
+    CurrentSurfaceTexture,
+    Surface,
+    SurfaceConfiguration
+};
+use glfw::{
+    Context,
+    Glfw,
+    GlfwReceiver,
+    PWindow,
+    WindowEvent
+};
 use super::graphicscontrol::GraphicsControl;
+use nalgebra::Vector2;
+use std::sync::Arc;
+
 
 /// The window, and everything on it
 pub struct Window{

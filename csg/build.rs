@@ -2,7 +2,16 @@
 //! [`csg::packed.rs`] includes this file and thus the files defined in packed.json can be used
 //! from whithin the VFS structure
 
-use std::{collections::HashMap, env, fs::{self, File}, io::Write, path::Path};
+use std::{
+    collections::HashMap,
+    env,
+    fs::{
+        self,
+        File
+    },
+    io::Write,
+    path::Path
+};
 use indexmap::IndexMap;
 use serde::Deserialize;
 

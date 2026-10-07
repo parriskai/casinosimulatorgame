@@ -3,12 +3,11 @@
 //! 
 //! You probably dont need to include this if you are already using [`crate::prelude`]
 //! 
+use zip::result::ZipError;
 use std::str::Utf8Error;
-
 use image::ImageError;
 use thiserror::Error;
 use vfs::VfsError;
-use zip::result::ZipError;
 
 /// An error originating or related to GLFW
 #[derive(Error, Debug)]

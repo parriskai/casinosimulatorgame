@@ -1,14 +1,25 @@
 //! `csg::game`
 //! Core game class
-use std::sync::Arc;
+use crate::{
+    graphics::window::Window,
+    vfs::packed::create_packed_vfs,
+    prelude::*,
+    vfs::modularfs::ModuleFS,
+    simulation::{
+        tiles::{
+            FloorType,
+            TileGrid
+        },
+        world::World
+    }
+};
 use glfw::MouseButton;
 use nalgebra::Vector2;
-
-use crate::{graphics::window::Window, vfs::packed::create_packed_vfs, prelude::*, vfs::modularfs::ModuleFS, simulation::{tiles::{FloorType, TileGrid}, world::World}};
+use std::sync::Arc;
 
 /// Core game class, holds all the good stuff
 pub struct Game{
-    vfs: Arc<dyn CasinoFS>,
+    pub vfs: Arc<dyn CasinoFS>,
     window: Window,
     world: World,
     drag: Option<(Vector2<i32>, Vector2<i32>)>,

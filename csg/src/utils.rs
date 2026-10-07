@@ -1,7 +1,10 @@
 //! `csg::utils`
 //! Common file for all utils that arent specific to one particular module
 
-use nalgebra::{Matrix4, Vector3};
+use nalgebra::{
+    Matrix4,
+    Vector3
+};
 
 /// Converts a CPU-side matrix type into a byte representation needed for passing to
 /// GPU APIs.

@@ -1,9 +1,23 @@
+use crate::{
+    graphics::{
+        RenderLayer,
+        UvBox,
+        assets::{
+            AssetDefault,
+            DefaultAsset,
+            JsonLoadable,
+            ReloadableAsset,
+            gputexture::GpuTexture,
+            manager::AssetKey
+        },
+        renderer::Renderer
+    },
+    prelude::*
+};
 use std::time::Instant;
-
 use nalgebra::Vector2;
 use serde::Deserialize;
 
-use crate::{graphics::{RenderLayer, UvBox, assets::{AssetDefault, DefaultAsset, JsonLoadable, ReloadableAsset, gputexture::GpuTexture, manager::{AssetKey, AssetManager}}, atlasrender::AtlasRenderer, renderer::Renderer}, prelude::*};
 
 #[derive(Debug, Deserialize)]
 pub struct FlipbookJSON{
@@ -14,11 +28,11 @@ pub struct FlipbookJSON{
     fn reload(&mut self, data: &[u8]) -> GResult<()> {
         match Self::load(data){
             Ok(data) => {
-                std::mem::replace(self, data);
+                drop(std::mem::replace(self, data));
                 Ok(())
             }
             Err(e) => {
-                std::mem::replace(self, <FlipbookJSON as DefaultAsset>::default());
+                drop(std::mem::replace(self, <FlipbookJSON as DefaultAsset>::default()));
                 Err(e)
             }
         }

@@ -1,8 +1,17 @@
-use vfs::{FileSystem, VfsFileType, VfsResult};
+use vfs::{
+    FileSystem,
+    VfsFileType,
+    VfsResult
+};
+use std::{
+    fs::File, 
+    io::Write
+};
+use crate::{
+    vfs::join_path,
+    prelude::*,
+};
 use zip::write::SimpleFileOptions;
-use std::{fs::File, io::{Seek, Write}};
-use crate::prelude::*;
-use super::join_path;
 
 pub trait CasinoFS: FileSystem {
     fn should_reload(&self) -> bool;

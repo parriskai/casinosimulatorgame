@@ -1,7 +1,14 @@
-use std::{fmt::Debug, io::Cursor, iter::once};
-
-use vfs::{FileSystem, VfsFileType, VfsMetadata, error::VfsErrorKind};
-
+use vfs::{
+    FileSystem,
+    VfsFileType,
+    VfsMetadata,
+    error::VfsErrorKind
+};
+use std::{
+    fmt::Debug,
+    io::Cursor,
+    iter::once
+};
 use crate::vfs::traits::CasinoFS;
 
 #[derive(Debug)]

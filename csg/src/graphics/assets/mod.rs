@@ -2,10 +2,13 @@ pub mod gputexture;
 pub mod manager;
 pub mod image;
 
-use serde::Deserialize;
 use unsafe_any::UnsafeAnyExt;
+use std::any::{
+    Any,
+    TypeId
+};
+use serde::Deserialize;
 use crate::prelude::*;
-use std::any::{Any, TypeId};
 
 
 pub trait ReloadableAsset: Any{

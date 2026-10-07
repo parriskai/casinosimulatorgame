@@ -1,10 +1,14 @@
 //! `csg::logging`
 //! Manage the games logging
 
-use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use std::fs::OpenOptions;
-
+use tracing_subscriber::{
+    EnvFilter,
+    fmt,
+    layer::SubscriberExt,
+    util::SubscriberInitExt
+};
 use crate::errors::GResult;
+use std::fs::OpenOptions;
 
 /// Initalize tracing
 /// 

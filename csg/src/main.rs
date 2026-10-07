@@ -1,4 +1,11 @@
-use csg::{prelude::*, game::Game, logging::{init_tracing, log_result}};
+use csg::{
+    prelude::*,
+    game::Game,
+    logging::{
+        init_tracing,
+        log_result
+    }
+};
 
 fn main() -> GResult<()>{
     init_tracing();

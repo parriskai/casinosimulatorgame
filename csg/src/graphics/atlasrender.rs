@@ -1,10 +1,40 @@
-use crate::{graphics::{RenderLayer, UvBox, assets::{gputexture::GpuTexture, manager::{AssetKey, AssetManager}}, graphicscontrol::GraphicsControl}, utils::{IntoGpuMatrix, coordinate_transform}};
-use std::collections::HashMap;
-
-use bytemuck::{Pod, Zeroable};
-use nalgebra::{Matrix4, Vector2, Vector3};
-use wgpu::util::DeviceExt;
-
+use crate::{
+    graphics::{
+        RenderLayer,
+        UvBox,
+        assets::{
+            gputexture::GpuTexture,
+            manager::{
+                AssetKey,
+                AssetManager
+            }
+        },
+        graphicscontrol::GraphicsControl
+    },
+    utils::{
+        IntoGpuMatrix,
+        coordinate_transform
+    }
+};
+use wgpu::{
+    BindGroupLayout,
+    Buffer,
+    PipelineLayout,
+    RenderPipeline,
+    ShaderModule,
+    TextureFormat,
+    util::DeviceExt
+};
+use nalgebra::{
+    Matrix4,
+    Vector2,
+    Vector3
+};
+use bytemuck::{
+    Pod,
+    Zeroable
+};
+use ahash::AHashMap;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -45,101 +75,140 @@ pub struct AtlasRenderer{
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
 
-    buckets: HashMap<(RenderLayer, AssetKey<GpuTexture>), AtlasBucket>,
+    buckets: AHashMap<(RenderLayer, AssetKey<GpuTexture>), AtlasBucket>,
 
     world_to_cvv: Matrix4<f32>,
 
     bind_group_layout: wgpu::BindGroupLayout,
 } impl AtlasRenderer{
     pub fn create(gc: GraphicsControl, surface_format: wgpu::TextureFormat) -> AtlasRenderer{
-        const QUAD_VERTICES: &[f32] = &[
-            -1.0, -1.0,
-             1.0, -1.0,
-             1.0,  1.0,
-            -1.0,  1.0,
-        ];
+        let vertex_buffer = Self::vertex_buffer(&gc);
 
-        const QUAD_INDICES: &[u16] = &[
-            0, 1, 2,
-            2, 3, 0,
-        ];
+        let index_buffer = Self::index_buffer(&gc);
+        
+        let bind_group_layout = Self::bind_group_layout(&gc);
+        
+        let shader = Self::shader_module(&gc);
 
-        let vertex_buffer = gc.device.create_buffer_init(
+        let pipeline_layout = Self::pipeline_layout(&gc, &bind_group_layout);
+
+        let pipeline = Self::pipline(&gc, &pipeline_layout, &shader, surface_format);
+
+        let world_to_cvv = gc.get_world_to_cvv();
+
+        AtlasRenderer{
+            gc,
+            pipeline,
+            vertex_buffer,
+            index_buffer,
+            buckets: AHashMap::new(),
+            world_to_cvv,
+            bind_group_layout,
+        }
+    }
+
+    const QUAD_VERTICES: &[f32] = &[
+        -1.0, -1.0,
+         1.0, -1.0,
+         1.0,  1.0,
+        -1.0,  1.0,
+    ];
+
+    const QUAD_INDICES: &[u16] = &[
+        0, 1, 2,
+        2, 3, 0,
+    ];
+
+    fn vertex_buffer(gc: &GraphicsControl) -> Buffer{
+        gc.device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor{
                 label: Some("AtlasRederer Vertex Buffer"),
-                contents: bytemuck::cast_slice(QUAD_VERTICES),
+                contents: bytemuck::cast_slice(Self::QUAD_VERTICES),
                 usage: wgpu::BufferUsages::VERTEX
             }
-        );
+        )
+    }
 
-        let index_buffer = gc.device.create_buffer_init(
+    fn index_buffer(gc: &GraphicsControl) -> Buffer{
+        gc.device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor{
                 label: Some("AtlasRenderer Index Buffer"),
-                contents: bytemuck::cast_slice(QUAD_INDICES),
+                contents: bytemuck::cast_slice(Self::QUAD_INDICES),
                 usage: wgpu::BufferUsages::INDEX
             }
-        );
-        
-        let bind_group_layout =
-            gc.device.create_bind_group_layout(
-                &wgpu::BindGroupLayoutDescriptor {
-                    label: Some("AtlasRenderer Texture Layout"),
-                    entries: &[
-                        // Texture
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                multisampled: false,
-                                view_dimension:
-                                    wgpu::TextureViewDimension::D2,
-                                sample_type:
-                                    wgpu::TextureSampleType::Float {
-                                        filterable: true,
-                                    },
-                            },
-                            count: None,
-                        },
+        )
+    }
 
-                        // Sampler
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler(
-                                wgpu::SamplerBindingType::Filtering,
-                            ),
-                            count: None,
+    fn bind_group_layout(gc: &GraphicsControl) -> BindGroupLayout{
+        gc.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("AtlasRenderer Texture Layout"),
+                entries: &[
+                    // Texture
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension:
+                                wgpu::TextureViewDimension::D2,
+                            sample_type:
+                                wgpu::TextureSampleType::Float {
+                                    filterable: true,
+                                },
                         },
-                    ],
-                },
-            );
-        
-        let shader = gc.device.create_shader_module(
+                        count: None,
+                    },
+
+                    // Sampler
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(
+                            wgpu::SamplerBindingType::Filtering,
+                        ),
+                        count: None,
+                    },
+                ],
+            },
+        )
+    }
+
+    pub fn get_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.bind_group_layout
+    }
+
+    fn shader_module(gc: &GraphicsControl) -> ShaderModule{
+        gc.device.create_shader_module(
             wgpu::ShaderModuleDescriptor {
                 label: Some("AtlasRenderer Shader"),
                 source: wgpu::ShaderSource::Wgsl(
                     include_str!("../../../assets/atlas.wgsl").into()
                 ),
             },
-        );
+        )
 
-        let pipeline_layout =
-            gc.device.create_pipeline_layout(
-                &wgpu::PipelineLayoutDescriptor {
-                    label: Some("AtlasRenderer Pipeline Layout"),
-                    bind_group_layouts: &[Some(&bind_group_layout)],
-                    immediate_size: 0
-                },
-            );
+    }
 
-        let pipeline = gc.device.create_render_pipeline(
+    fn pipeline_layout(gc: &GraphicsControl, bgl: &BindGroupLayout) -> PipelineLayout{
+        gc.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("AtlasRenderer Pipeline Layout"),
+                bind_group_layouts: &[Some(&bgl)],
+                immediate_size: 0
+            },
+        )
+    }
+
+    fn pipline(gc: &GraphicsControl, pl: &PipelineLayout, s: &ShaderModule, sfmt: TextureFormat) -> RenderPipeline{
+        gc.device.create_render_pipeline(
             &wgpu::RenderPipelineDescriptor {
                 label: Some("AtlasRenderer Pipeline"),
 
-                layout: Some(&pipeline_layout),
+                layout: Some(&pl),
 
                 vertex: wgpu::VertexState {
-                    module: &shader,
+                    module: &s,
                     entry_point: Some("vs_main"),
                     compilation_options:
                         wgpu::PipelineCompilationOptions::default(),
@@ -164,14 +233,14 @@ pub struct AtlasRenderer{
                 },
 
                 fragment: Some(wgpu::FragmentState {
-                    module: &shader,
+                    module: &s,
                     entry_point: Some("fs_main"),
                     compilation_options:
                         wgpu::PipelineCompilationOptions::default(),
 
                     targets: &[Some(
                         wgpu::ColorTargetState {
-                            format: surface_format,
+                            format: sfmt,
                             blend: Some(
                                 wgpu::BlendState::ALPHA_BLENDING
                             ),
@@ -200,18 +269,7 @@ pub struct AtlasRenderer{
 
                 multiview_mask: None
             },
-        );
-
-        let world_to_cvv = gc.get_world_to_cvv();
-        AtlasRenderer{
-            gc,
-            pipeline,
-            vertex_buffer,
-            index_buffer,
-            buckets: HashMap::new(),
-            world_to_cvv,
-            bind_group_layout,
-        }
+        )
     }
 
     pub fn draw_atlas(&mut self, tkey: AssetKey<GpuTexture>, uv: UvBox, position: (Vector2<f32>, Vector2<f32>, RenderLayer)) {
@@ -327,9 +385,5 @@ pub struct AtlasRenderer{
         for bucket in self.buckets.values_mut() {
             bucket.instances.clear();
         }
-    }
-
-    pub fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
-        &self.bind_group_layout
     }
 }

@@ -1,7 +1,13 @@
-use std::{io::Cursor, sync::LazyLock};
-
-use crate::{errors::{GResult, GeneralizeError}, graphics::assets::{AssetDefault, DefaultAsset, ReloadableAsset}};
+use crate::{
+    graphics::assets::{
+        AssetDefault, 
+        DefaultAsset, 
+        ReloadableAsset
+    },
+    prelude::*,
+};
 use image::DynamicImage;
+use std::io::Cursor;
 
 pub fn load_image(data: &[u8]) -> GResult<DynamicImage>{
     Ok(
@@ -12,7 +18,7 @@ pub fn load_image(data: &[u8]) -> GResult<DynamicImage>{
 } impl ReloadableAsset for DynamicImage{
     fn reload(&mut self, data: &[u8]) -> crate::prelude::GResult<()> {
         // Just overwrite it
-        std::mem::replace(self, load_image(data)?);
+        drop(std::mem::replace(self, load_image(data)?));
         Ok(())
     }
 }

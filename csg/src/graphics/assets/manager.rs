@@ -1,7 +1,27 @@
-use std::{any::{Any, TypeId}, collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
-use crate::{graphics::assets::{AssetDefault, JsonLoadable, ReloadableAsset}, prelude::*};
+use crate::{
+    graphics::assets::{
+        AssetDefault,
+        JsonLoadable,
+        ReloadableAsset
+    },
+    prelude::*
+};
+use std::{
+    any::{
+        Any,
+        TypeId
+    },
+    fmt::Debug,
+    hash::Hash,
+    marker::PhantomData,
+    sync::Arc
+};
 use ahash::AHashMap;
-use slotmap::{Key, KeyData, SlotMap};
+use slotmap::{
+    Key,
+    KeyData, 
+    SlotMap
+};
 use unsafe_any::UnsafeAnyExt;
 
 /// Asset Key for asset of type T
@@ -83,7 +103,7 @@ pub struct AssetKey<T>{
 /// Assets are stored and indexed by thier type and AssetKey<T>
 /// Allowing consumers to only store a copyable AssetKey and only fetch when needed to
 pub struct AssetManager{
-    assets: AHashMap<TypeId, (HashMap<String, AssetKey<()>>, SlotMap<AssetKey<()>, Box<dyn ReloadableAsset>>)>,
+    assets: AHashMap<TypeId, (AHashMap<String, AssetKey<()>>, SlotMap<AssetKey<()>, Box<dyn ReloadableAsset>>)>,
     defaults: AHashMap<TypeId, Box<dyn Any>>,
     vfs: Arc<dyn CasinoFS>
 } impl AssetManager{
@@ -157,7 +177,7 @@ pub struct AssetManager{
     pub fn create_asset<T: ReloadableAsset + 'static, F: FnOnce(&[u8]) -> GResult<T>>(&mut self, path: &str, f: F) -> GResult<AssetKey<T>>{
         // Pull the entry in the table (create it if it doesnt exist)
         let entry = self.assets.entry(TypeId::of::<T>());
-        let (by_name, entries) = entry.or_insert_with(|| (HashMap::new(), SlotMap::with_key()));
+        let (by_name, entries) = entry.or_insert_with(|| (AHashMap::new(), SlotMap::with_key()));
         
         // If we already created the asset
         if let Some(key) = by_name.get(path){
@@ -175,7 +195,7 @@ pub struct AssetManager{
     pub fn create_json_asset<'a, T: ReloadableAsset + JsonLoadable<'a> + 'static>(&mut self, path: &str) -> GResult<AssetKey<T>>{
         // Pull the entry in the table (create it if it doesnt exist)
         let entry = self.assets.entry(TypeId::of::<T>());
-        let (by_name, entries) = entry.or_insert_with(|| (HashMap::new(), SlotMap::with_key()));
+        let (by_name, entries) = entry.or_insert_with(|| (AHashMap::new(), SlotMap::with_key()));
         
         // If we already created the asset
         if let Some(key) = by_name.get(path){
@@ -280,7 +300,7 @@ pub struct AssetManager{
     pub fn get_or_create_asset<T: ReloadableAsset + 'static, F: FnOnce(&[u8]) -> GResult<T>>(&mut self, path: &str, f: F) -> GResult<(AssetKey<T>, &T)>{
         // Pull the entry in the table (create it if it doesnt exist)
         let t_entry = self.assets.entry(TypeId::of::<T>());
-        let (by_name, entries) = t_entry.or_insert_with(|| (HashMap::new(), SlotMap::with_key()));
+        let (by_name, entries) = t_entry.or_insert_with(|| (AHashMap::new(), SlotMap::with_key()));
 
         // If we already created the asset
         if let Some(key) = by_name.get(path){
@@ -310,7 +330,7 @@ pub struct AssetManager{
     pub fn get_or_create_asset_mut<T: ReloadableAsset + 'static, F: FnOnce(&[u8]) -> GResult<T>>(&mut self, path: &str, f: F) -> GResult<(AssetKey<T>, &mut T)>{
         // Pull the entry in the table (create it if it doesnt exist)
         let t_entry = self.assets.entry(TypeId::of::<T>());
-        let (by_name, entries) = t_entry.or_insert_with(|| (HashMap::new(), SlotMap::with_key()));
+        let (by_name, entries) = t_entry.or_insert_with(|| (AHashMap::new(), SlotMap::with_key()));
 
         // If we already created the asset
         if let Some(key) = by_name.get(path){

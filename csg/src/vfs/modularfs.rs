@@ -1,7 +1,15 @@
-use vfs::{FileSystem, VfsFileType, VfsMetadata, VfsResult, error::VfsErrorKind};
+use vfs::{
+    FileSystem,
+    VfsFileType,
+    VfsMetadata,
+    VfsResult,
+    error::VfsErrorKind
+};
+use crate::vfs::{
+    join_path,
+    traits::CasinoFS
+};
 use std::collections::HashMap;
-
-use crate::vfs::{join_path, traits::CasinoFS};
 
 enum LocationType<'a>{
     Root,

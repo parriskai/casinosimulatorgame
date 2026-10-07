@@ -1,8 +1,34 @@
-use glfw::Key;
-use nalgebra::Vector2;
+use crate::{
+    graphics::{
+        RenderLayer,
+        UvBox,
+        assets::{
+            gputexture::{
+                GpuTexture,
+                load_texture
+            },
+            manager::AssetKey
+        },
+        renderer::Renderer,
+        sprite::{
+            Sprite,
+            SpriteInstance
+        }
+    },
+    prelude::*,
+    simulation::{
+        tiles::{
+            FloorType,
+            TILE_SIZE,
+            TileGrid
+        },
+        world::World
+    }
+};
 
-use crate::{graphics::{RenderLayer, UvBox, assets::{gputexture::{GpuTexture, load_texture}, manager::AssetKey}, renderer::Renderer, sprite::{Sprite, SpriteInstance}}, prelude::*, simulation::{tiles::{FloorType, TILE_SIZE, TileGrid}, world::World}};
 use csg_macros::build_sprite_state_enum;
+use nalgebra::Vector2;
+use glfw::Key;
 
 build_sprite_state_enum!{
     pub enum Player{
@@ -46,17 +72,18 @@ pub struct GameRenderer{
         )
     }
     pub fn frame(&mut self, ren: &mut Renderer, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
+        let mspeed = 1200. * ren.input_manager.get_delta_time() as f32;
         if ren.input_manager.key_down(&Key::Right){
-            self.pi.pos.x += 20.;
+            self.pi.pos.x += mspeed;
             self.pi.state = Player::East;
         } else if ren.input_manager.key_down(&Key::Left){
-            self.pi.pos.x -= 20.;
+            self.pi.pos.x -= mspeed;
             self.pi.state = Player::West;
         } else if ren.input_manager.key_down(&Key::Down){
-            self.pi.pos.y += 20.;
+            self.pi.pos.y += mspeed;
             self.pi.state = Player::South;
         } else if ren.input_manager.key_down(&Key::Up){
-            self.pi.pos.y -= 20.;
+            self.pi.pos.y -= mspeed;
             self.pi.state = Player::North;
         }
 

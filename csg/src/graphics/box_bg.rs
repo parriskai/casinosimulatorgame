@@ -1,7 +1,22 @@
+use crate::{
+    graphics::{
+        RenderLayer,
+        UvBox,
+        assets::{
+            AssetDefault,
+            DefaultAsset,
+            JsonLoadable,
+            ReloadableAsset,
+            gputexture::GpuTexture,
+            manager::AssetKey
+        },
+        renderer::Renderer
+    },
+    prelude::*
+};
 use nalgebra::Vector2;
 use serde::Deserialize;
 
-use crate::{errors::{GError, GResult, GeneralizeError}, graphics::{RenderLayer, UvBox, assets::{AssetDefault, DefaultAsset, JsonLoadable, ReloadableAsset, gputexture::GpuTexture, manager::{AssetKey, AssetManager}}, atlasrender::AtlasRenderer, renderer::Renderer}};
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub struct BoxBgJSON{
@@ -22,11 +37,11 @@ pub struct BoxBgJSON{
     fn reload(&mut self, data: &[u8]) -> GResult<()> {
         match Self::load(data){
             Ok(data) => {
-                std::mem::replace(self, data);
+                let _ = std::mem::replace(self, data);
                 Ok(())
             }
             Err(e) => {
-                std::mem::replace(self, <BoxBgJSON as DefaultAsset>::default());
+                let _ = std::mem::replace(self, <BoxBgJSON as DefaultAsset>::default());
                 Err(e)
             }
         }

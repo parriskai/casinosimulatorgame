@@ -1,12 +1,18 @@
-use heck::ToSnakeCase;
-use proc_macro::TokenStream;
-use proc_macro_crate::{FoundCrate, crate_name};
-use quote::{format_ident, quote};
 use syn::{
     parse::ParseStream,
     parse_macro_input,
     Error, Ident, LitStr, Result, Token, Visibility,
 };
+use proc_macro_crate::{
+    FoundCrate,
+    crate_name
+};
+use quote::{
+    format_ident,
+    quote
+};
+use proc_macro::TokenStream;
+use heck::ToSnakeCase;
 
 struct SpriteStateInput {
     vis: Visibility,
@@ -198,11 +204,11 @@ fn expand_sprite_state(input: SpriteStateInput) -> Result<proc_macro2::TokenStre
             fn reload(&mut self, data: &[u8]) -> #crate_path::errors::GResult<()> {
                 match #json_name::load(data){
                     Ok(data) => {
-                        std::mem::replace(self, data);
+                        let _ = std::mem::replace(self, data);
                         Ok(())
                     }
                     Err(e) => {
-                        std::mem::replace(self, <#json_name as #crate_path::graphics::assets::DefaultAsset>::default());
+                        let _ = std::mem::replace(self, <#json_name as #crate_path::graphics::assets::DefaultAsset>::default());
                         Err(e)
                     }
                 }

@@ -1,5 +1,17 @@
-use crate::graphics::{RenderLayer, UvBox, assets::{gputexture::GpuTexture, manager::AssetKey}, atlasrender::AtlasRenderer};
-use std::{collections::HashMap, io::Cursor, sync::Arc};
+use crate::graphics::{
+    RenderLayer,
+    UvBox,
+    assets::{
+        gputexture::GpuTexture,
+        manager::AssetKey
+    },
+    atlasrender::AtlasRenderer
+};
+use std::{
+    collections::HashMap,
+    io::Cursor,
+    sync::Arc
+};
 use serde::Deserialize;
 use nalgebra::Vector2;
 

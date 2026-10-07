@@ -1,5 +1,6 @@
 pub mod graphicscontrol;
 pub mod gamerenderer;
+pub mod chunkmanager;
 pub mod atlasrender;
 pub mod input_mgr;
 pub mod renderer;
@@ -10,7 +11,10 @@ pub mod sprite;
 pub mod box_bg;
 pub mod assets;
 
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{
+    Pod,
+    Zeroable
+};
 use serde::Deserialize;
 use strum::EnumCount;
 

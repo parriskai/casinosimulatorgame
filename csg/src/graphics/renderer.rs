@@ -1,12 +1,23 @@
+use crate::{
+    prelude::*,
+    graphics::{
+        assets::{
+            DefaultAsset,
+            manager::AssetManager,
+            gputexture::GpuTexture,
+        },
+        atlasrender::AtlasRenderer,
+        graphicscontrol::GraphicsControl,
+        input_mgr::InputManager
+    }
+};
+use wgpu::{
+    RenderPass,
+    Texture,
+    TextureFormat,
+    TextureView
+};
 use std::sync::Arc;
-
-use image::DynamicImage;
-use wgpu::{RenderPass, Texture, TextureFormat, TextureView};
-
-use crate::graphics::assets::DefaultAsset;
-use crate::graphics::assets::gputexture::GpuTexture;
-use crate::graphics::input_mgr::InputManager;
-use crate::{prelude::*, graphics::{assets::manager::AssetManager, atlasrender::AtlasRenderer, graphicscontrol::GraphicsControl}};
 
 pub struct Renderer{
     pub gc: GraphicsControl,
