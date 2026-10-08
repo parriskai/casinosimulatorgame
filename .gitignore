@@ -1,3 +1,5 @@
 target/
+docs/
+generated-assets/*.*
 .env
 casino.log

@@ -2,8 +2,7 @@
 //! Common file for all utils that arent specific to one particular module
 
 use nalgebra::{
-    Matrix4,
-    Vector3
+    Matrix4, Vector2, Vector3, Vector4
 };
 
 /// Converts a CPU-side matrix type into a byte representation needed for passing to
@@ -95,4 +94,50 @@ impl<A, B> IntoPair<A, B> for (A, B){
 
 impl <A> IntoPair<A, ()> for A{
     fn into_pair(self) -> (A, ()) {(self, ())}
+}
+
+pub fn transform_point(
+    matrix: &[[f32; 4]; 4],
+    point: Vector3<f32>,
+) -> Vector3<f32> {
+    let x = point.x;
+    let y = point.y;
+    let z = point.z;
+
+    let tx =
+        matrix[0][0] * x +
+        matrix[1][0] * y +
+        matrix[2][0] * z +
+        matrix[3][0];
+
+    let ty =
+        matrix[0][1] * x +
+        matrix[1][1] * y +
+        matrix[2][1] * z +
+        matrix[3][1];
+
+    let tz =
+        matrix[0][2] * x +
+        matrix[1][2] * y +
+        matrix[2][2] * z +
+        matrix[3][2];
+
+    let w =
+        matrix[0][3] * x +
+        matrix[1][3] * y +
+        matrix[2][3] * z +
+        matrix[3][3];
+
+    Vector3::new(
+        tx / w,
+        ty / w,
+        tz / w,
+    )
+}
+
+pub fn vec2_to_vec3<T: nalgebra::Scalar + Copy>(v: Vector2<T>, s: T) -> Vector3<T>{
+    Vector3::new(v.x, v.y, s)
+}
+pub fn vec3_to_vec4<T: nalgebra::Scalar + Copy>(v: Vector3<T>, s: T) -> Vector4<T>{
+    Vector4::new(v.x, v.y, v.z, s)
 }

@@ -105,7 +105,7 @@ pub struct AssetKey<T>{
 pub struct AssetManager{
     assets: AHashMap<TypeId, (AHashMap<String, AssetKey<()>>, SlotMap<AssetKey<()>, Box<dyn ReloadableAsset>>)>,
     defaults: AHashMap<TypeId, Box<dyn Any>>,
-    vfs: Arc<dyn CasinoFS>
+    pub vfs: Arc<dyn CasinoFS>
 } impl AssetManager{
     /// Create the asset manager, should only be done once!
     pub fn create(vfs: Arc<dyn CasinoFS>) -> AssetManager{

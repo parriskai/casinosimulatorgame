@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 build = "build.rs"
 
+[features]
+debug_tools = []
+default = ["debug_tools"]
+
 [build-dependencies]
 serde_json = {version = "1.0.151", features = ["preserve_order"]}
 indexmap = {version = "2.14.2", features = ["serde"]}
@@ -13,6 +17,7 @@ serde = {version = "1.0.229", features = ["derive"]}
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
 serde = {version = "1.0.229", features = ["derive"]}
 strum = { version = "0.28.0", features = ["derive"]}
+ahash = {version = "0.8.12", features = ["serde"]}
 phf = { version = "0.14.0", features = ["macros"]}
 csg-macros = {path = "../csg-macros"}
 raw-window-handle = "0.6.2"
@@ -26,7 +31,6 @@ pollster = "1.0.1"
 tracing = "0.1.44"
 image = "0.25.10"
 slotmap = "1.1.1"
-ahash = "0.8.12"
 glfw = "0.63.0"
 wgpu = "30.0.1"
 vfs = "0.13.0"

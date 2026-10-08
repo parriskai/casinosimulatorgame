@@ -6,6 +6,8 @@
 //! - Then create the game instance `csg::game::Game::create()`
 //! - Then run it `Game.run()`
 
+#[cfg(any(debug_assertions, feature = "debug_tools"))]
+pub mod debug_features;
 pub mod simulation;
 pub mod graphics;
 pub mod logging;

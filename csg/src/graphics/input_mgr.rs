@@ -4,13 +4,14 @@ use nalgebra::Vector2;
 use ahash::AHashMap;
 
 pub struct InputManager{
-    keys: AHashMap<Key, Option<Instant>>,
+    keys: AHashMap<Key, Option<(Instant, u32)>>,
     mouse: AHashMap<MouseButton, bool>,
     modifiers: Modifiers,
     cursor: Vector2<f32>,
     frame_time: Instant,
     delta_time: f64,
     scale: (f32, f32),
+    pub should_reload_fb: bool
 } impl InputManager {
     pub fn create() -> InputManager{
         InputManager {
@@ -20,7 +21,8 @@ pub struct InputManager{
             modifiers: Modifiers::empty(),
             frame_time: Instant::now(),
             delta_time: 0.,
-            scale: (1., 1.)
+            scale: (1., 1.),
+            should_reload_fb: true
         }
     }
 
@@ -41,12 +43,18 @@ pub struct InputManager{
                 }
                 true
             }
+
+            WindowEvent::FramebufferSize(_, _) | WindowEvent::Size(_, _)  | WindowEvent::ContentScale(_, _ ) => {
+                self.should_reload_fb = true;
+                true
+            }
+
             WindowEvent::Key(k, _sc, a, _) => {
                 let k = self.keys.entry(*k).or_insert(None);
                 
                 match a{
                     Action::Press | Action::Repeat => {
-                        *k = Some(Instant::now());
+                        *k = Some((Instant::now(), 0));
                     }
                     Action::Release => {
                         *k = None;
@@ -99,10 +107,12 @@ pub struct InputManager{
         self.scale = pw.get_content_scale();
         for (k,v) in self.keys.iter_mut(){
             match v{
-                Some(t) => {
-                    if  (cur - *t).as_secs() > 1{
+                Some((t,ct)) => {
+                    if (cur - *t).as_secs() > 1{
                         *v = None;
                         tracing::info!("Key ({k:?}) released due to timeout");
+                    } else {
+                        *ct += 1;
                     }
                 }
                 None => {}
@@ -112,6 +122,10 @@ pub struct InputManager{
 
     pub fn key_down(&self, k: &Key) -> bool{
         self.keys.get(&k).unwrap_or(&None).is_some()
+    }
+    
+    pub fn key_down_for(&self, k: &Key) -> Option<u32>{
+        self.keys.get(&k).unwrap_or(&None).map(|x| x.1.clone())
     }
 
     pub fn mouse_down(&self, button: MouseButton) -> bool{

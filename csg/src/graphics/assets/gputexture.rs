@@ -15,12 +15,12 @@ pub struct GpuTexture {
     gc: GraphicsControl,
     name: String,
 
-    texture: wgpu::Texture,
-    view: wgpu::TextureView,
+    pub texture: wgpu::Texture,
+    pub view: wgpu::TextureView,
 
-    sampler: wgpu::Sampler,
-    bind_group_layout: wgpu::BindGroupLayout,
-    bind_group: wgpu::BindGroup,
+    pub sampler: wgpu::Sampler,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 } impl GpuTexture{
     pub fn from_di(gc: GraphicsControl, image: DynamicImage, name: String) -> GpuTexture{
         let image = image.to_rgba8();

@@ -3,7 +3,7 @@
         "loc": "/",
         "final": true
     },
-    "../generated_assets": {
+    "../generated-assets": {
         "loc": "/"
     },
     "../temp-assets": {

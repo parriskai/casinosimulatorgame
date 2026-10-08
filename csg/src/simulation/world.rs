@@ -1,6 +1,11 @@
 use nalgebra::Vector2;
+use wgpu::TextureFormat;
+use crate::graphics::input_mgr::InputManager;
+use crate::graphics::{assets::manager::AssetManager, window::Window};
+use crate::graphics::graphicscontrol::GraphicsControl;
+use crate::simulation::chunkmanager::ChunkManager;
+use crate::prelude::*;
 use super::npc::{Npc, NpcState};
-use super::tiles::TileGrid;
 
 pub struct SlotMachines{
     pub pos: Vector2<f32>
@@ -11,7 +16,7 @@ pub struct World{
     pub machines: Vec<SlotMachines>,
     pub house_money: i64,
     pub entrance: Vector2<f32>,
-    pub grid: TileGrid,
+    pub grid: ChunkManager,
 }
 
 const HOUSE_START_MONEY: i64 = 3000;
@@ -23,14 +28,17 @@ const WIN_CHANCE: f32 = 5.0;
 const BET: i64 = 500;
 
 impl World{
-    pub fn new() -> World{
-        World{
-            npcs: Vec::new(),
-            machines: vec![SlotMachines {pos: Vector2::new(300.0, 200.0)}],
-            house_money: HOUSE_START_MONEY,
-            entrance: Vector2::new(0.0, 0.0),
-            grid: TileGrid::new(64, 64)
-        }
+    pub fn create(win: &mut Window) -> GResult<World>{
+        let grid = ChunkManager::create(win.renderer.gc.clone(), win.surface_format.clone(), &mut win.renderer.asset_manager)?;
+        Ok(
+            World{
+                npcs: Vec::new(),
+                machines: vec![SlotMachines {pos: Vector2::new(300.0, 200.0)}],
+                house_money: HOUSE_START_MONEY,
+                entrance: Vector2::new(0.0, 0.0),
+                grid
+            }
+        )
     } 
 
     pub fn spawn_npc(&mut self){
@@ -43,7 +51,13 @@ impl World{
 
         self.npcs.push(new_npc);
     }
-    pub fn update(&mut self, dt: f32){
+
+    pub fn update(&mut self, im: &InputManager){
+        if im.should_reload_fb{
+            self.grid.reload_transform();
+        }
+        let dt = im.get_delta_time() as f32;
+
         for npc in &mut self.npcs{
             match npc.state{
                 NpcState::WalkingTo{machine} => {
@@ -82,6 +96,7 @@ impl World{
         }
     }
 }
+
 fn move_toward(npc_pos: &mut Vector2<f32>, target: Vector2<f32>, step: f32) -> bool{
     let diff = target - *npc_pos;
     let dist = diff.norm();

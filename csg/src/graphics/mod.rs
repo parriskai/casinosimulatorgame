@@ -1,6 +1,6 @@
 pub mod graphicscontrol;
 pub mod gamerenderer;
-pub mod chunkmanager;
+pub mod linerenderer;
 pub mod atlasrender;
 pub mod input_mgr;
 pub mod renderer;
@@ -43,8 +43,7 @@ pub struct UvBox{
 pub enum RenderLayer{
     /// Bottom most layer, used to draw the missing texture behind everything else
     Clear,
-    Floor,
-    FloorPreview,
+    Tile,
     /// Debug layer, rendered above everything else
     Debug,
 }

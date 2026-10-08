@@ -1,0 +1,11 @@
+{
+    "size": [64, 64],
+    "tiles": {
+        "none": {
+            "file": "$NONE"
+        },
+        "floor": {
+            "file": "tiles/floor.png"
+        }
+    }
+}

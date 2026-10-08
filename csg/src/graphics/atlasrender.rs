@@ -1,17 +1,13 @@
 use crate::{
     graphics::{
-        RenderLayer,
-        UvBox,
-        assets::{
+        RenderLayer, UvBox, assets::{
             gputexture::GpuTexture,
             manager::{
                 AssetKey,
                 AssetManager
             }
-        },
-        graphicscontrol::GraphicsControl
-    },
-    utils::{
+        }, graphicscontrol::GraphicsControl, linerenderer::LineRenderer
+    }, utils::{
         IntoGpuMatrix,
         coordinate_transform
     }
@@ -38,11 +34,11 @@ use ahash::AHashMap;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
-struct AtlasInstance{
-    transform: [[f32; 4]; 4],
-    uv: UvBox
+pub struct AtlasInstance{
+    pub transform: [[f32; 4]; 4],
+    pub uv: UvBox
 } impl AtlasInstance {
-    fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
+    pub fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
         const ATTRIBUTES: &[wgpu::VertexAttribute] =
             &wgpu::vertex_attr_array![
                 1 => Float32x4,
@@ -80,6 +76,9 @@ pub struct AtlasRenderer{
     world_to_cvv: Matrix4<f32>,
 
     bind_group_layout: wgpu::BindGroupLayout,
+
+    #[cfg(any(debug_assertions, feature = "debug_tools"))]
+    debug_draw_lines: Vec<(Vector2<f32>, Vector2<f32>)>
 } impl AtlasRenderer{
     pub fn create(gc: GraphicsControl, surface_format: wgpu::TextureFormat) -> AtlasRenderer{
         let vertex_buffer = Self::vertex_buffer(&gc);
@@ -104,6 +103,9 @@ pub struct AtlasRenderer{
             buckets: AHashMap::new(),
             world_to_cvv,
             bind_group_layout,
+
+            #[cfg(any(debug_assertions, feature = "debug_tools"))]
+            debug_draw_lines: Vec::new()
         }
     }
 
@@ -273,6 +275,11 @@ pub struct AtlasRenderer{
     }
 
     pub fn draw_atlas(&mut self, tkey: AssetKey<GpuTexture>, uv: UvBox, position: (Vector2<f32>, Vector2<f32>, RenderLayer)) {
+        #[cfg(any(debug_assertions, feature = "debug_tools"))]
+        {
+            self.debug_draw_lines.push((position.0.clone(), position.1.clone()));
+        }
+
         let bucket = self
             .buckets
             .entry((position.2, tkey))
@@ -297,7 +304,17 @@ pub struct AtlasRenderer{
         self.world_to_cvv = self.gc.get_world_to_cvv();
     }
 
-    pub fn render_all<'a>(&'a mut self, render_pass: &mut wgpu::RenderPass<'a>, asset_mgr: &AssetManager) {
+    #[cfg(any(debug_assertions, feature = "debug_tools"))]
+    pub fn draw_debug_lines(&mut self, lr: &mut LineRenderer){
+        for (nw, se) in self.debug_draw_lines.drain(..) {
+            let ne = Vector2::new(se.x, nw.y);
+            let sw = Vector2::new(nw.x, se.y);
+            lr.draw_polyline(&[nw, ne, se, sw, nw], &[[1., 0., 0., 1.]; 5], RenderLayer::Debug);
+        }
+    }
+
+
+    pub fn render_all(&mut self, render_pass: &mut wgpu::RenderPass<'_>, asset_mgr: &AssetManager) {
         render_pass.set_pipeline(&self.pipeline);
 
         render_pass.set_vertex_buffer(

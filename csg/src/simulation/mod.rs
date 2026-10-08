@@ -1,4 +1,3 @@
-
-pub mod npc;
-pub mod tiles;
+pub mod chunkmanager;
 pub mod world;
+pub mod npc;

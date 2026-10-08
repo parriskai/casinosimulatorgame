@@ -96,6 +96,16 @@ pub struct GraphicsControl{
         )
     }
 
+    pub fn get_cvv_to_world(&self) -> Matrix4<f32>{
+        let dim = self.get_dim();
+        coordinate_transform(
+            Vector3::new(-1., 1., 1.),
+            Vector3::new(1., -1., 0.),
+            Vector3::new(0., 0., 0.),
+            Vector3::new(dim.0 as f32, dim.1 as f32, RenderLayer::COUNT as f32)
+        )
+    }
+
     pub fn log_info(&self){
         let ainfo = self.adapter.get_info();
         tracing::info!(target: "GraphicsControl", "Adapter::Name {}", ainfo.name);

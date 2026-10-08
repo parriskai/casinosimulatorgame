@@ -13,9 +13,7 @@ use raw_window_handle::{
     HasRawWindowHandle
 };
 use wgpu::{
-    CurrentSurfaceTexture,
-    Surface,
-    SurfaceConfiguration
+    CurrentSurfaceTexture, Surface, SurfaceConfiguration, TextureFormat
 };
 use glfw::{
     Context,
@@ -35,9 +33,9 @@ pub struct Window{
     
     pub renderer: Renderer,
     surface: Surface<'static>,
+    pub surface_format: TextureFormat,
     config: SurfaceConfiguration,
     event: GlfwReceiver<(f64, WindowEvent)>,
-
     pwindow: PWindow,
 
     glfw: Glfw,
@@ -51,7 +49,8 @@ pub struct Window{
         let gc = pollster::block_on(unsafe{GraphicsControl::create(pwindow.get_framebuffer_size())})?;
 
         let (surface, config) = Self::create_surface_unsafe(&gc, &pwindow)?;
-        let mut renderer = Renderer::create(gc, surface.get_configuration().unwrap().format, vfs);
+        let surface_format = surface.get_configuration().unwrap().format;
+        let mut renderer = Renderer::create(gc, surface_format.clone(), vfs);
 
         let gr = GameRenderer::create(&mut renderer)?;
 
@@ -61,6 +60,7 @@ pub struct Window{
                 pwindow,
                 event,
                 surface,
+                surface_format,
                 config,
                 renderer,
                 gr
@@ -137,21 +137,6 @@ pub struct Window{
                     self.pwindow.set_should_close(true)
                 },
 
-                WindowEvent::FramebufferSize(_, _) => {
-                    let (w, h) = self.pwindow.get_framebuffer_size();
-                    let (w, h) = (w.max(1) as u32, h.max(1) as u32);
-                    tracing::info!("Framebuffer set to {w}x{h}");
-
-                    self.config.width = w;
-                    self.config.height = h;
-                    self.surface.configure(&self.renderer.gc.device, &self.config);
-                    self.renderer.set_dim((w, h));
-                },
-
-                WindowEvent::Size(_, _) => {
-                    // We already handle FramebufferSize which is more acurate for what we need it for
-                }
-
                 WindowEvent::Refresh => {
                     // Alredy runneing every frame
                 }
@@ -164,9 +149,36 @@ pub struct Window{
                 }
             }
         }
+
+        if self.renderer.input_manager.should_reload_fb{
+            self.reload_framebuffer_size();
+        }
     }
 
-    fn render(&mut self, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
+    pub fn reload_framebuffer_size(&mut self){
+        let (w, h) = self.pwindow.get_framebuffer_size();
+        let (w, h) = (w.max(1) as u32, h.max(1) as u32);
+        tracing::info!("Framebuffer set to {w}x{h}");
+
+        self.config.width = w;
+        self.config.height = h;
+        self.surface.configure(&self.renderer.gc.device, &self.config);
+        self.surface_format = self.surface.get_configuration().unwrap().format;
+        self.renderer.set_dim((w, h));
+    }
+
+    #[cfg(any(debug_assertions, feature = "debug_tools"))]
+    fn debug_hotkeys(&mut self){
+        if self.renderer.input_manager.key_down_for(&glfw::Key::F1) == Some(1){
+            self.renderer.debug_features.outline_quads ^= true;
+            if self.renderer.debug_features.outline_quads{
+                tracing::info!("Debug feature Outline_QUADS: ENABLED")
+            } else {
+                tracing::info!("Debug feature Outline_QUADS: DISABLED")
+            }
+        }
+    }
+    pub fn render(&mut self, world: &mut World){
         // GET Render Target
         let output = match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(tex) => tex,
@@ -222,7 +234,7 @@ pub struct Window{
                 },
             ).forget_lifetime();
             
-            self.gr.frame(&mut self.renderer, &world, drag);
+            self.gr.frame(&mut self.renderer, &mut render_pass, world);
 
             self.renderer.finish(&mut render_pass);
         }
@@ -231,12 +243,10 @@ pub struct Window{
         self.renderer.gc.queue.present(output);
     }
 
-    pub fn frame(&mut self, world: &World, drag: Option<(Vector2<i32>, Vector2<i32>)>){
-        self.renderer.input_manager.tick(&self.pwindow);
+    pub fn update(&mut self){
         self.handle_events();
-        self.render(world, drag);
-        
-        //self.pwindow.swap_buffers();
+        self.renderer.input_manager.tick(&self.pwindow);
+        self.debug_hotkeys();
     }
 
     pub fn should_close(&self) -> bool{
