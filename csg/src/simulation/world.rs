@@ -1,3 +1,6 @@
+use std::cell::Cell;
+use std::rc::Rc;
+
 use nalgebra::Vector2;
 use wgpu::TextureFormat;
 use crate::graphics::input_mgr::InputManager;
@@ -11,12 +14,20 @@ pub struct SlotMachines{
     pub pos: Vector2<f32>
 }
 
+pub struct ViewInner{
+    dim: (u32, u32),
+    pos: Vector2<f32>,
+    zoom: f32,
+    changed: bool
+}
+
 pub struct World{
     pub npcs: Vec<Npc>,
     pub machines: Vec<SlotMachines>,
     pub house_money: i64,
     pub entrance: Vector2<f32>,
     pub grid: ChunkManager,
+    pub view: Rc<Cell<ViewInner>>
 }
 
 const HOUSE_START_MONEY: i64 = 3000;
@@ -29,14 +40,17 @@ const BET: i64 = 500;
 
 impl World{
     pub fn create(win: &mut Window) -> GResult<World>{
-        let grid = ChunkManager::create(win.renderer.gc.clone(), win.surface_format.clone(), &mut win.renderer.asset_manager)?;
+        let gc = win.renderer.gc.clone();
+        let view = Rc::new(Cell::new(ViewInner{dim: gc.get_dim(), pos: Vector2::zeros(), zoom: 1., changed: true}));
+        let grid = ChunkManager::create(gc, win.surface_format.clone(), &mut win.renderer.asset_manager)?;
         Ok(
             World{
                 npcs: Vec::new(),
                 machines: vec![SlotMachines {pos: Vector2::new(300.0, 200.0)}],
                 house_money: HOUSE_START_MONEY,
                 entrance: Vector2::new(0.0, 0.0),
-                grid
+                grid,
+                view
             }
         )
     } 
@@ -54,8 +68,9 @@ impl World{
 
     pub fn update(&mut self, im: &InputManager){
         if im.should_reload_fb{
-            self.grid.reload_transform();
+            self.grid.reload_framebuffer_size();
         }
+
         let dt = im.get_delta_time() as f32;
 
         for npc in &mut self.npcs{

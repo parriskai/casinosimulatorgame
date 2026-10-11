@@ -13,7 +13,7 @@ pub struct InputManager{
     scale: (f32, f32),
     pub should_reload_fb: bool
 } impl InputManager {
-    pub fn create() -> InputManager{
+    pub fn new() -> InputManager{
         InputManager {
             cursor: Vector2::zeros(),
             keys: AHashMap::new(),

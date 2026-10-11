@@ -4,7 +4,7 @@
 //! You probably dont need to include this if you are already using [`crate::prelude`]
 //! 
 use zip::result::ZipError;
-use std::str::Utf8Error;
+use std::{fmt::{Debug, Display}, str::Utf8Error, sync::mpsc::SendError};
 use image::ImageError;
 use thiserror::Error;
 use vfs::VfsError;
@@ -43,7 +43,9 @@ pub enum WGPUError{
     #[error("Failed to request an adapter ({0})")]
     RequestAdapterError(wgpu::RequestAdapterError),
     #[error("Failed to request a device ({0})")]
-    RequestDeviceError(wgpu::RequestDeviceError)
+    RequestDeviceError(wgpu::RequestDeviceError),
+    #[error("Failed to create a wgpu surface ({0})")]
+    CreateSurfaceError(wgpu::CreateSurfaceError)
 }
 impl Into<GError> for wgpu::RequestAdapterError{
     fn into(self) -> GError {
@@ -53,6 +55,11 @@ impl Into<GError> for wgpu::RequestAdapterError{
 impl Into<GError> for wgpu::RequestDeviceError{
     fn into(self) -> GError {
         GError::WGPUError(WGPUError::RequestDeviceError(self))
+    }
+}
+impl Into<GError> for wgpu::CreateSurfaceError{
+    fn into(self) -> GError {
+        GError::WGPUError(WGPUError::CreateSurfaceError(self))
     }
 }
 
@@ -92,6 +99,18 @@ impl Into<GError> for Utf8Error{
     }
 }
 
+/// An error originating or related to the Command module
+#[derive(Error, Debug)]
+pub enum CommandError{
+    #[error("MPSC SendError ({0})")]
+    SendError(Box<dyn GenericSendError>)
+}
+
+impl<T> Into<GError> for SendError<T> where T: 'static{
+    fn into(self) -> GError {
+        GError::CommandError(CommandError::SendError(Box::new(self)))
+    }
+}
 /// General Error type
 #[derive(Error, Debug)]
 pub enum GError{
@@ -111,6 +130,8 @@ pub enum GError{
     SerdeError(::serde_json::Error),
     #[error("UTF-8 Error ({0})")]
     Utf8Error(Utf8Error),
+    #[error("Command Error ({0})")]
+    CommandError(CommandError),
     #[error("Generic Error")]
     GenericErrror
 }
@@ -128,4 +149,10 @@ impl<T, E> GeneralizeError<T> for Result<T, E> where  E: Into<GError>{
     fn g_err(self) -> GResult<T> {
         self.map_err(|e| e.into())
     }
+}
+
+pub trait GenericSendError: Debug + Display + std::error::Error {
+}
+
+impl<T> GenericSendError for SendError<T>{
 }

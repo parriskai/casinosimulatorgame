@@ -135,6 +135,29 @@ pub struct Chunk{
     fn get(&self, x: usize, y: usize) -> &Tile{
         &self.grid[y][x]
     }
+    
+    fn set(&mut self, x: usize, y: usize, t: Tile){
+        self.grid[y][x] = t;
+        self.dirty = true;
+        
+    }
+
+    fn set_imediate(&mut self, x: usize, y: usize, t: Tile, gc: &GraphicsControl){
+        self.grid[y][x] = t;
+        gc.queue.write_buffer(
+            &self.buffer,
+            ((y * CHUNK_SIZE + x) * std::mem::size_of::<GpuTileData>()) as u64,
+            bytemuck::cast_slice(
+                &[
+                    GpuTileData{
+                        position: [x as i32 + self.coords.0 * (CHUNK_SIZE as i32), y as i32 + self.coords.1 * (CHUNK_SIZE as i32)],
+                        uv_index: self.get(x, y).index()
+                    }
+                ]
+            )
+        );
+
+    }
 
     fn render(&mut self, gc: &GraphicsControl, render_pass: &mut RenderPass){
         if self.dirty{
@@ -167,6 +190,7 @@ pub struct ChunkManager {
 
     bind_group: BindGroup,
 
+    screen_size: (u32, u32),
     pub scale: f32,
     pub center: Vector2<f32>
 } impl ChunkManager{
@@ -182,9 +206,10 @@ pub struct ChunkManager {
         let vertex_buffer = Self::vertex_buffer(&gc);
         let index_buffer = Self::index_buffer(&gc);
 
+        let screen_size = gc.get_dim();
         let scale = 2.;
         let center = Vector2::new(CHUNK_SIZE as f32 / 2., CHUNK_SIZE as f32 / 2.);
-        let transform = Self::calculate_world_to_cvv(&gc, tileset_json.size.clone(), scale.clone(), center.clone());
+        let transform = Self::calculate_world_to_cvv(screen_size.clone(), tileset_json.size.clone(), scale.clone(), center.clone());
         let transform_buffer = Self::transform_buffer(&gc, &transform);
 
         let uv_list = tileset_json.create_uv_list();
@@ -211,6 +236,7 @@ pub struct ChunkManager {
                 transform_buffer,
                 uv_buffer,
 
+                screen_size,
                 bind_group,
                 center,
                 scale
@@ -458,26 +484,19 @@ pub struct ChunkManager {
         )
     }
 
-    fn calculate_world_to_cvv(
-    gc: &GraphicsControl,
-    size: [f32; 2],
-    scale: f32,
-    center: Vector2<f32>,
-) -> Matrix4<f32> {
-    let dim = (2256, 1469); //gc.get_dim();
-
-    let screen = Vector2::new(dim.0 as f32, dim.1 as f32);
+    fn calculate_world_to_cvv(screen_dim: (u32, u32), tile_size: [f32; 2], world_scale: f32, view_center: Vector2<f32>) -> Matrix4<f32> {
+    let screen = Vector2::new(screen_dim.0 as f32, screen_dim.1 as f32);
 
     // Number of tile pixels visible in each direction.
-    let visible_pixels = screen / scale;
+    let visible_pixels = screen / world_scale;
 
     // Convert screen pixels to tile/world units.
-    let visible_world = visible_pixels.component_div(&Vector2::from(size));
+    let visible_world = visible_pixels.component_div(&Vector2::from(tile_size));
 
     let half_world = visible_world / 2.0;
 
-    let min = center - half_world;
-    let max = center + half_world;
+    let min = view_center - half_world;
+    let max = view_center + half_world;
 
     let tz = RenderLayer::Tile as u8 as f32;
     let rl_max = RenderLayer::COUNT as f32;
@@ -490,8 +509,13 @@ pub struct ChunkManager {
     )
 }
 
+    pub fn reload_framebuffer_size(&mut self){
+        self.screen_size = self.gc.get_dim();
+        self.reload_transform();
+    }
+
     pub fn reload_transform(&mut self){
-        let transform = Self::calculate_world_to_cvv(&self.gc, self.tileset_json.size.clone(), self.scale.clone(), self.center.clone());
+        let transform = Self::calculate_world_to_cvv(self.screen_size, self.tileset_json.size.clone(), self.scale.clone(), self.center.clone());
         self.gc.queue.write_buffer(&self.transform_buffer, 0, bytemuck::cast_slice(&transform.into_gmat()));
     }
 

@@ -9,10 +9,14 @@
 #[cfg(any(debug_assertions, feature = "debug_tools"))]
 pub mod debug_features;
 pub mod simulation;
-pub mod graphics;
+pub mod input_mgr;
+pub mod commands;
+pub mod renderer;
 pub mod logging;
 pub mod prelude;
+pub mod window;
 pub mod errors;
 pub mod utils;
+pub mod math;
 pub mod game;
 pub mod vfs;
