@@ -13,6 +13,8 @@ pub struct SlotMachines{
 
 pub struct World{
     pub npcs: Vec<Npc>,
+    pub max_npcs: usize,
+    pub spawn_timer: f32,
     pub machines: Vec<SlotMachines>,
     pub house_money: Money,
     pub entrance: Vector2<f32>,
@@ -20,6 +22,7 @@ pub struct World{
 }
 
 const HOUSE_START_MONEY: Money = 3000;
+const NPC_SPAWN_INTERVAL: f32 = 3.0;
 const WALLET_MIN: Money = 500; 
 const WALLET_MAX: Money = 500_000;
 const SPIN_TIME: f32 = 10.0; //time it takes to play slots
@@ -61,12 +64,11 @@ impl World{
             self.grid.reload_transform();
         }
         let dt = im.get_delta_time() as f32;
-
         self.spawn_timer += dt;
-        // if (self.spawn_timer > NPC_SPAWN_INTERVAL) && self.npcs.len() < self.npcs_population{ 
-        //     self.spawn_timer = 0.0;
-        //     self.spawn_npc();
-        // }
+        if (self.spawn_timer > NPC_SPAWN_INTERVAL) && self.npcs.len() < self.npcs_population{ 
+            self.spawn_timer = 0.0;
+            self.spawn_npc();
+        }
         
         for npc in &mut self.npcs{
             match npc.state{
@@ -103,11 +105,15 @@ impl World{
                 }
                 NpcState::Gone => {}
 <<<<<<< HEAD
+<<<<<<< HEAD
             } 
 =======
             }
             
 >>>>>>> ef3752f (fixed issue with my window manager resizing the window and causing the game to crash)
+=======
+            } 
+>>>>>>> 8389683 (spawn npcs at interval and reender)
         }
         // get rid of the npcs that left the casino. 
         self.npcs.retain(|npc| {
