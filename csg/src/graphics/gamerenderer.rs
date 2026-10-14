@@ -68,6 +68,12 @@ pub struct GameRenderer{
             self.pi.pos.y -= mspeed;
             self.pi.state = Player::North;
         }
+
+        for npc in &world.npcs{
+            let npc_instance = SpriteInstance::create(4., npc.pos, super::RenderLayer::Debug, Player::South); 
+            npc_instance.render(&self.ps, ren);
+
+        }
         
         world.grid.render(rp);
         self.pi.render(&self.ps, ren);
