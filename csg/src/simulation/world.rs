@@ -5,7 +5,7 @@ use crate::graphics::{assets::manager::AssetManager, window::Window};
 use crate::graphics::graphicscontrol::GraphicsControl;
 use crate::simulation::chunkmanager::ChunkManager;
 use crate::prelude::*;
-use super::npc::{Npc, NpcState};
+use super::npc::{Npc, NpcState, Money};
 
 pub struct SlotMachines{
     pub pos: Vector2<f32>
@@ -14,14 +14,14 @@ pub struct SlotMachines{
 pub struct World{
     pub npcs: Vec<Npc>,
     pub machines: Vec<SlotMachines>,
-    pub house_money: i64,
+    pub house_money: Money,
     pub entrance: Vector2<f32>,
     pub grid: ChunkManager,
 }
 
-const HOUSE_START_MONEY: i64 = 3000;
-const WALLET_MIN: i64 = 500; 
-const WALLET_MAX: i64 = 500_000;
+const HOUSE_START_MONEY: Money = 3000;
+const WALLET_MIN: Money = 500; 
+const WALLET_MAX: Money = 500_000;
 const SPIN_TIME: f32 = 10.0; //time it takes to play slots
 const WALK_SPEED: f32 = 10.0; 
 const WIN_CHANCE: f32 = 5.0;
@@ -47,6 +47,7 @@ impl World{
             pos: self.entrance,
             wallet: rand::random_range(WALLET_MIN..WALLET_MAX),
             state: NpcState::WalkingTo{machine: 0},
+            machine_prefs: vec![1; self.machines.len()]
         };
 
         self.npcs.push(new_npc);
@@ -93,6 +94,7 @@ impl World{
                 }
                 NpcState::Gone => {}
             }
+            
         }
     }
 }

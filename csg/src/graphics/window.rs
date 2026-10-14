@@ -180,12 +180,19 @@ pub struct Window{
     }
     pub fn render(&mut self, world: &mut World){
         // GET Render Target
-        let output = match self.surface.get_current_texture() {
-            CurrentSurfaceTexture::Success(tex) => tex,
+        let mut reconfigure = false;
+        let output = match self.surface.get_current_texture(){
+            CurrentSurfaceTexture::Success(tex)=>tex,
             CurrentSurfaceTexture::Occluded => return,
+            CurrentSurfaceTexture::Suboptimal(tex) => {reconfigure = true; tex}
             CurrentSurfaceTexture::Timeout => return,
-            cst => panic!("Failed to acquire surface texture: {cst:?}"),
+            CurrentSurfaceTexture::Outdated => {
+                self.reload_framebuffer_size(); 
+                return;
+            }
+           cst => panic!("failed to acquire surface texture: {cst:?}"),
         };
+    
 
         // Create Command Encoder
         let mut encoder = self.renderer.gc.device.create_command_encoder(
@@ -241,6 +248,9 @@ pub struct Window{
 
         self.renderer.gc.queue.submit(Some(encoder.finish()));
         self.renderer.gc.queue.present(output);
+        if reconfigure{
+            self.reload_framebuffer_size();
+        }
     }
 
     pub fn update(&mut self){
