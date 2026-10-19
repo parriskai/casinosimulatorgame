@@ -54,7 +54,7 @@ pub struct GameRenderer{
         )
     }
     pub fn frame(&mut self, ren: &mut Renderer, rp: &mut RenderPass, world: &mut World){
-        let mspeed = 1200. * ren.input_manager.get_delta_time() as f32;
+        let mspeed = 1000. * ren.input_manager.get_delta_time() as f32;
         if ren.input_manager.key_down(&Key::Right){
             self.pi.pos.x += mspeed;
             self.pi.state = Player::East;

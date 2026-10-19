@@ -15,9 +15,17 @@ OUTPUT_JSON = OUTPUT_DIR / "tileset.json"
 OUTPUT_PNG = OUTPUT_DIR / "tileatlas.png"
 
 
-def load_tileset():
-    with INPUT.open("r", encoding="utf-8") as f:
-        return json.load(f)
+def load_tileset(path):
+    with path.open("r", encoding="utf-8") as f:
+        jsn = json.load(f)
+    
+    for inc in jsn.get("include", []):
+        jsn2 = load_tileset(path.parent.joinpath(inc))
+        if jsn2["size"] != jsn["size"]:
+            raise RuntimeError("Size mismatch")
+        jsn["tiles"].update(jsn2["tiles"])
+    print(jsn)
+    return jsn
 
 
 def get_tile_image(tile):
@@ -83,7 +91,7 @@ def clamp_copyrect(copyrect, tile_w, tile_h):
 
 
 def main():
-    data = load_tileset()
+    data = load_tileset(INPUT)
 
     tile_size = data["size"]
     tile_w, tile_h = tile_size
@@ -93,7 +101,7 @@ def main():
 
     tiles = data["tiles"]
 
-    tile_count = len(tiles)
+    tile_count = sum(1 if isinstance(tile, dict) else len(tile) for tile in tiles.values())
 
     if tile_count == 0:
         raise ValueError("No tiles found")
@@ -113,68 +121,70 @@ def main():
 
     output_tiles = {}
 
-    for index, (name, tile) in enumerate(tiles.items()):
-        column = index % columns
-        row = index // columns
+    index = 0
+    for (name, tile) in tiles.items():
+        if isinstance(tile, dict):
+            tile = [tile]
+        
+        output = []
+        for frame in tile:
+            column = index % columns
+            row = index // columns
+            index += 1
 
-        slot_x = column * tile_w
-        slot_y = row * tile_h
+            slot_x = column * tile_w
+            slot_y = row * tile_h
 
-        copyrect = tile.get("copyrect")
-
-        if tile.get("file") == "$NONE":
-            # Blank tile. Nothing needs to be copied.
-            output_tiles[name] = {
+            output.append({
                 "u0": slot_x / atlas_w,
                 "v0": slot_y / atlas_h,
                 "u1": (slot_x + tile_w) / atlas_w,
                 "v1": (slot_y + tile_h) / atlas_h,
-            }
-            continue
+            })
+            
+            copyrect = frame.get("copyrect")
 
-        image = get_tile_image(tile)
+            if frame.get("file") == "$NONE":
+                # Blank tile. Nothing needs to be copied.
+                continue
 
-        if image is None:
-            continue
+            image = get_tile_image(frame)
 
-        if copyrect is not None:
-            # copyrect specifies the destination rectangle in the tile.
-            #
-            # The source image is resized to exactly that rectangle.
-            x, y, w, h = clamp_copyrect(copyrect, tile_w, tile_h)
+            if image is None:
+                continue
 
-            if w > 0 and h > 0:
-                image = image.resize(
-                    (w, h),
-                    Image.Resampling.LANCZOS
-                )
+            if copyrect is not None:
+                # copyrect specifies the destination rectangle in the tile.
+                #
+                # The source image is resized to exactly that rectangle.
+                x, y, w, h = clamp_copyrect(copyrect, tile_w, tile_h)
 
-                dest_x = slot_x + x
-                dest_y = slot_y + y
+                if w > 0 and h > 0:
+                    image = image.resize(
+                        (w, h),
+                        Image.Resampling.LANCZOS
+                    )
+
+                    dest_x = slot_x + x
+                    dest_y = slot_y + y
+
+                    atlas.alpha_composite(
+                        image,
+                        (dest_x, dest_y)
+                    )
+
+            else:
+                # Normal behavior: scale down if necessary, then center.
+                image = fit_image(image, tile_w, tile_h)
+
+                image_x = slot_x + (tile_w - image.width) // 2
+                image_y = slot_y + (tile_h - image.height) // 2
 
                 atlas.alpha_composite(
                     image,
-                    (dest_x, dest_y)
+                    (image_x, image_y)
                 )
-
-        else:
-            # Normal behavior: scale down if necessary, then center.
-            image = fit_image(image, tile_w, tile_h)
-
-            image_x = slot_x + (tile_w - image.width) // 2
-            image_y = slot_y + (tile_h - image.height) // 2
-
-            atlas.alpha_composite(
-                image,
-                (image_x, image_y)
-            )
-
-        output_tiles[name] = {
-            "u0": slot_x / atlas_w,
-            "v0": slot_y / atlas_h,
-            "u1": (slot_x + tile_w) / atlas_w,
-            "v1": (slot_y + tile_h) / atlas_h,
-        }
+        output_tiles[name] = output
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
