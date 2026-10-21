@@ -1,22 +1,16 @@
 use crate::{
     graphics::{
-        assets::{
+        RenderLayer, assets::{
             gputexture::{
                 GpuTexture,
                 load_texture
             },
             manager::AssetKey
-        },
-        renderer::Renderer,
-        sprite::{
+        }, banner::Banner, renderer::Renderer, sprite::{
             Sprite,
             SpriteInstance
         }
-    },
-    prelude::*,
-    simulation::{
-        world::World
-    }
+    }, prelude::*, simulation::world::World
 };
 
 use csg_macros::build_sprite_state_enum;
@@ -36,20 +30,22 @@ pub struct GameRenderer{
     ps: Sprite<PlayerJSON>,
     pi: SpriteInstance<PlayerJSON>,
 
-    dot: AssetKey<GpuTexture>
+    banner: Banner
 } impl GameRenderer {
     pub fn create(ren: &mut Renderer) -> GResult<GameRenderer>{
         let atlas  =ren.asset_manager.create_asset("assets/player.png", load_texture(ren.gc.clone(), "PLAYER".into()))?;
         let player_json = ren.asset_manager.create_json_asset("assets/player.json")?;
         let ps = Sprite::create(atlas, player_json);
-        let pi = SpriteInstance::create(4., Vector2::zeros(), super::RenderLayer::Debug, Player::South);
+        let pi = SpriteInstance::create(4., Vector2::zeros(), super::RenderLayer::Sprites, Player::South);
 
-        let dot = ren.asset_manager.create_asset("assets/dot.png", load_texture(ren.gc.clone(), "DOT".into()))?;
+        let banner_asset = ren.asset_manager.create_asset("assets/gold_banner.png", load_texture(ren.gc.clone(), "GOLD_BANNER".into()))?;
+        let banner = Banner{asset: banner_asset, size: (200., 64.), pos: (Vector2::new(500., 0.), RenderLayer::Debug), buffer: 64.};
+        
         Ok(
             GameRenderer {
                 ps,
                 pi,
-                dot
+                banner
             }
         )
     }
@@ -69,6 +65,8 @@ pub struct GameRenderer{
             self.pi.state = Player::North;
         }
 
+        self.banner.draw(&mut ren.atlas_renderer);
+        
         for npc in &world.npcs{
             let npc_instance = SpriteInstance::create(4., npc.pos, super::RenderLayer::Debug, Player::South); 
             npc_instance.render(&self.ps, ren);

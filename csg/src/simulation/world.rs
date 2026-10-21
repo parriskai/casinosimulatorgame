@@ -11,6 +11,16 @@ pub struct SlotMachines{
     pub pos: Vector2<f32>
 }
 
+pub struct View{
+    pub scale: f32,
+    pub center: Vector2<f32>
+}
+
+pub enum GamePhase{
+    Editing,
+}
+
+
 pub struct World{
     pub npcs: Vec<Npc>,
     pub max_npcs: usize,
@@ -19,6 +29,9 @@ pub struct World{
     pub house_money: Money,
     pub entrance: Vector2<f32>,
     pub grid: ChunkManager,
+
+    pub view: View,
+    //pub mouse_tile: (i32, i32)
 }
 
 const HOUSE_START_MONEY: Money = 3000;
@@ -41,6 +54,7 @@ impl World{
                 machines: vec![SlotMachines {pos: Vector2::new(300.0, 200.0)}],
                 house_money: HOUSE_START_MONEY,
                 entrance: Vector2::new(0.0, 0.0),
+                view: View { scale: 0., center: Vector2::zeros()},
                 grid
             }
         )
@@ -63,11 +77,12 @@ impl World{
             self.grid.reload_transform();
         }
         let dt = im.get_delta_time() as f32;
+
         self.spawn_timer += dt;
-        if (self.spawn_timer > NPC_SPAWN_INTERVAL) && self.npcs.len() < self.npcs_population{ 
-            self.spawn_timer = 0.0;
-            self.spawn_npc();
-        }
+        // if (self.spawn_timer > NPC_SPAWN_INTERVAL) && self.npcs.len() < self.npcs_population{ 
+        //     self.spawn_timer = 0.0;
+        //     self.spawn_npc();
+        // }
         
         for npc in &mut self.npcs{
             match npc.state{

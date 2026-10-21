@@ -5,7 +5,7 @@ use crate::{
         RenderLayer, UvBox, assets::{
             gputexture::{GpuTexture, load_texture}, manager::{AssetKey, AssetManager}
         }, graphicscontrol::GraphicsControl
-    }, math::{Adjacent, Rect, SetBit}, prelude::*, simulation::chunkmanager::Tile::Carpet, utils::{IntoGpuMatrix, coordinate_transform, vec2_to_vec3}
+    }, math::{Adjacent, Rect, SetBit}, prelude::*, simulation::{chunkmanager::Tile::Carpet, world::View}, utils::{IntoGpuMatrix, coordinate_transform, vec2_to_vec3}
 };
 use ahash::AHashMap;
 use bytemuck::{Pod, Zeroable};
@@ -338,8 +338,8 @@ pub struct ChunkManager {
 
     bind_group: BindGroup,
 
-    pub scale: f32,
-    pub center: Vector2<f32>
+    center: Vector2<f32>,
+    scale: f32
 } impl ChunkManager{
     pub fn create(gc: GraphicsControl, sfmt: TextureFormat, asset_mgr: &mut AssetManager) -> GResult<Self>{
         let tileset_json: TileSetJson = serde_json::from_str(
@@ -629,13 +629,8 @@ pub struct ChunkManager {
         )
     }
 
-    fn calculate_world_to_cvv(
-    gc: &GraphicsControl,
-    size: [f32; 2],
-    scale: f32,
-    center: Vector2<f32>,
-) -> Matrix4<f32> {
-    let dim = (2256, 1469); //gc.get_dim();
+    fn calculate_world_to_cvv(gc: &GraphicsControl, size: [f32; 2], scale: f32, center: Vector2<f32>) -> Matrix4<f32> {
+    let dim = gc.get_dim();
 
     let screen = Vector2::new(dim.0 as f32, dim.1 as f32);
 

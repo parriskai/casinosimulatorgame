@@ -6,6 +6,7 @@ pub mod input_mgr;
 pub mod renderer;
 pub mod flipbook;
 pub mod textren;
+pub mod banner;
 pub mod window;
 pub mod sprite;
 pub mod box_bg;
@@ -44,6 +45,7 @@ pub enum RenderLayer{
     /// Bottom most layer, used to draw the missing texture behind everything else
     Clear,
     Tile,
+    Sprites,
     /// Debug layer, rendered above everything else
     Debug,
 }
