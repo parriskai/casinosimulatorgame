@@ -6,29 +6,33 @@ use crate::graphics::graphicscontrol::GraphicsControl;
 use crate::simulation::chunkmanager::ChunkManager;
 use crate::prelude::*;
 use super::npc::{Npc, NpcState, Money};
+use super::casino_games::{CasinoGame, GameType, SlotMachine, Outcome};
 
-pub struct SlotMachines{
-    pub pos: Vector2<f32>
+pub struct View{
+    pub scale: f32,
+    pub center: Vector2<f32>
 }
 
 pub struct World{
     pub npcs: Vec<Npc>,
     pub max_npcs: usize,
     pub spawn_timer: f32,
-    pub machines: Vec<SlotMachines>,
+    pub games: Vec<CasinoGame>,
     pub house_money: Money,
+    pub reputation: f32,
     pub entrance: Vector2<f32>,
     pub grid: ChunkManager,
+    pub view: View,
 }
 
 const HOUSE_START_MONEY: Money = 3000;
 const NPC_SPAWN_INTERVAL: f32 = 3.0;
 const WALLET_MIN: Money = 500; 
-const WALLET_MAX: Money = 500_000;
-const SPIN_TIME: f32 = 10.0; //time it takes to play slots
-const WALK_SPEED: f32 = 10.0; 
+const WALLET_MAX: Money = 5_000;
+const SPIN_TIME: f32 = 4.0; //time it takes to play slots
+const WALK_SPEED: f32 = 90.0; 
 const WIN_CHANCE: f32 = 5.0;
-const BET: i64 = 500;
+const MIN_BET: i64 = 5;
 
 impl World{
     pub fn create(win: &mut Window) -> GResult<World>{
@@ -38,8 +42,15 @@ impl World{
                 npcs: Vec::new(),
                 max_npcs: 3,
                 spawn_timer: 0.0,
-                machines: vec![SlotMachines {pos: Vector2::new(300.0, 200.0)}],
+                games: vec![
+                    CasinoGame::roulette(Vector2::new(800.0, 200.0), 45),
+                    CasinoGame::slots(Vector2::new(300.0, 200.0), 45),
+                    CasinoGame::slots(Vector2::new(200.0, 200.0), 45),
+                    CasinoGame::slots(Vector2::new(100.0, 200.0), 45),
+                    CasinoGame::slots(Vector2::new(50.0, 200.0), 45),
+                ],
                 house_money: HOUSE_START_MONEY,
+                reputation: 0.0,
                 entrance: Vector2::new(0.0, 0.0),
                 view: View { scale: 0., center: Vector2::zeros()},
                 grid
@@ -52,8 +63,8 @@ impl World{
         let new_npc = Npc{
             pos: self.entrance,
             wallet: rand::random_range(WALLET_MIN..WALLET_MAX),
-            state: NpcState::WalkingTo{machine: 0},
-            machine_prefs: vec![1; self.machines.len()]
+            state: NpcState::WalkingTo{machine: rand::random_range(0..self.games.len())},
+            machine_prefs: vec![1; self.games.len()]
         };
 
         self.npcs.push(new_npc);
@@ -65,7 +76,7 @@ impl World{
         }
         let dt = im.get_delta_time() as f32;
         self.spawn_timer += dt;
-        if (self.spawn_timer > NPC_SPAWN_INTERVAL) && self.npcs.len() < self.npcs_population{ 
+        if (self.spawn_timer > NPC_SPAWN_INTERVAL) && self.npcs.len() < self.max_npcs{ 
             self.spawn_timer = 0.0;
             self.spawn_npc();
         }
@@ -73,8 +84,7 @@ impl World{
         for npc in &mut self.npcs{
             match npc.state{
                 NpcState::WalkingTo{machine} => {
-                    let target = self.machines[machine].pos;
-
+                    let target = self.games[machine].pos;
                     if move_toward(&mut npc.pos, target, dt * WALK_SPEED){
                         npc.state = NpcState::Playing{machine, timer: 0.0};
                     }
@@ -85,16 +95,23 @@ impl World{
                         npc.state = NpcState::Playing{machine, timer};
                         continue;
                     }
-                    if npc.wallet < BET{
+                    if npc.wallet < MIN_BET{
                         npc.state = NpcState::Leaving;
                         continue;
                     }
-                    npc.wallet -= BET;
-                    self.house_money += BET as i64;
-                    if (rand::random_range(0..100) as f32) < WIN_CHANCE{
-                        npc.wallet += BET * 2;
-                        self.house_money -= (BET * 2) as i64;
-                   }
+                    let bet = rand::random_range(MIN_BET..npc.wallet);
+
+                    npc.wallet -= bet;
+                    self.house_money += bet as i64;
+
+                    match self.games[machine].play(bet){
+                        Outcome::Win(amount) => {
+                            npc.wallet += amount;
+                            self.house_money -= amount;
+                        }
+                        Outcome::Lose => {}
+                    }
+                    
                     npc.state = NpcState::Playing{machine, timer: 0.0}
                 }
                 NpcState::Leaving => {
@@ -104,16 +121,7 @@ impl World{
                     }
                 }
                 NpcState::Gone => {}
-<<<<<<< HEAD
-<<<<<<< HEAD
-            } 
-=======
             }
-            
->>>>>>> ef3752f (fixed issue with my window manager resizing the window and causing the game to crash)
-=======
-            } 
->>>>>>> 8389683 (spawn npcs at interval and reender)
         }
         // get rid of the npcs that left the casino. 
         self.npcs.retain(|npc| {
