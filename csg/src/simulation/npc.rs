@@ -1,5 +1,4 @@
 use nalgebra::Vector2;
-use std::cmp;
 use super::world::Money;
 
 
@@ -14,7 +13,7 @@ impl DirectionFacing{
         if v.x <= 0.{
             if v.y <= 0.{
                 return DirectionFacing::South;
-            }else{
+            }else if v.y >= 0.{
                 return DirectionFacing::North;
             }
             return DirectionFacing::West;

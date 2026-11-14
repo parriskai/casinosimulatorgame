@@ -14,11 +14,10 @@ use crate::{
             SpriteInstance
         },
         shop::{ShopItem, Shop},
-        box_bg::BoxBg,
     }, prelude::*, 
     simulation::{
         world::World,
-        npc::{NpcState, DirectionFacing},
+        npc::{DirectionFacing},
         casino_games::{GameType, RouletteTable, SlotMachine},
     }
 };
@@ -54,14 +53,14 @@ pub struct GameRenderer{
         let font_json: AtlasJSON = serde_json::from_str(include_str!("../../../generated-assets/pixelta.json")).map_err(|_| GError::GenericErrror)?;
         let font = Font::create(font_json, font_texture);
         let hud_asset = ren.asset_manager.create_asset("assets/hud.png", load_texture(ren.gc.clone(), "HUD".into()))?;
-        let bg = ren.asset_manager.create_asset("assets/menu.png", load_texture(ren.gc.clone(), "BOX_BG".into()))?;
+        let shop_bg_asset = ren.asset_manager.create_asset("assets/menu.png", load_texture(ren.gc.clone(), "BOX_BG".into()))?;
         let hud = Hud{asset: hud_asset, size: (800., 64.), pos: (Vector2::new(400.,0.), RenderLayer::Hud), font: font.clone(), buffer: 64. };
         let slot_machine = ren.asset_manager.create_asset("assets/slot_machine.png", load_texture(ren.gc.clone(), "SLOT_MACHINE".into()))?;
         let roulette_table = ren.asset_manager.create_asset("assets/roulette_table.png", load_texture(ren.gc.clone(), "ROULETTE_TABLE".into()))?;
         let items = vec![
-            ShopItem::new(GameType::Slots(SlotMachine {odds: 45}), slot_machine, "Slots".to_string(), 100),
+            ShopItem::new(GameType::Slots(SlotMachine {}), slot_machine, "Slots".to_string(), 100),
         ];
-        let shop = Shop::create(items, bg, font);
+        let shop = Shop::create(items, shop_bg_asset, font);
 
         Ok(
             GameRenderer {
@@ -92,7 +91,7 @@ pub struct GameRenderer{
 
         let dim = ren.gc.get_dim();
         self.hud.draw(&mut ren.atlas_renderer, dim, world);
-        self.shop.draw(ren, dim);
+        self.shop.draw(ren,dim);
 
         for machine in &world.games{
             let (texture, size) = match machine.kind{

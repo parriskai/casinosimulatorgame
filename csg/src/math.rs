@@ -1,6 +1,5 @@
 use std::ops::{Add, Range};
 
-use glfw::Key::S;
 pub struct Rect<T>{
     pub x: T,
     pub y: T,

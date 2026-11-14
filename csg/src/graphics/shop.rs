@@ -1,15 +1,12 @@
 use nalgebra::Vector2;
-use crate::prelude::*;
 use crate::simulation::{
-    world::{World, Money},
+    world::{Money},
     casino_games::GameType,
 };
 use crate::graphics::{
     RenderLayer, UvBox, 
     assets::{gputexture::GpuTexture, manager::AssetKey},
-    atlasrender::AtlasRenderer,
     textren::Font,
-    box_bg::BoxBg,
     renderer::Renderer,
 };
 
@@ -29,7 +26,7 @@ pub struct Shop{
             was_down: false,
             font: font,
             bg: bg,
-            scale: 1.,
+            scale: 7.,
             button_size: 90.,
         }
     }
@@ -49,6 +46,42 @@ pub struct Shop{
                 RenderLayer::Hud,
             ),
         );
+        ren.atlas_renderer.draw_atlas(
+            self.bg,
+            UvBox{u0: 1., u1: 0., v0: 1., v1: 0.5},
+            (
+                Vector2::new(left, top + h),
+                Vector2::new(left + width, (bottom)/2.),
+                RenderLayer::Hud,
+            ),
+        );
+        ren.atlas_renderer.draw_atlas(
+            self.bg,
+            UvBox{u0: 1., u1: 0., v0: 2., v1: 0.},
+            (
+                Vector2::new(left, bottom/2. ),
+                Vector2::new(left + width, bottom - h),
+                RenderLayer::Hud,
+            ),
+        );
+        for (i, shop_item) in self.items.iter().enumerate(){
+            let size = ren.asset_manager.get_asset(shop_item.icon).map(|t| t.texture.size());
+            if size == None{
+                continue;
+            }
+            let gap = 10.;
+            let x = left + (width - self.button_size)/2.;
+            let y= top + h + gap + i as f32 * (self.button_size + gap);
+            ren.atlas_renderer.draw_atlas(
+                shop_item.icon,
+                UvBox::FULL,
+                (
+                    Vector2::new(x,y),
+                    Vector2::new(self.button_size + x, self.button_size+ y),
+                    RenderLayer::HudText,
+                ),
+            );
+        }
     }
 }
 
@@ -58,7 +91,7 @@ pub struct ShopItem{
     name: String,
     cost: Money,
 }impl ShopItem{
-    pub fn new(game_type: GameType, icon: AssetKey<GpuTexture>, name: String, cost: Money) -> Self{
+    pub fn new(game_type: GameType, icon: AssetKey<GpuTexture>,name: String, cost: Money) -> Self{
         Self{
             game_type: game_type,
             icon: icon,

@@ -1,4 +1,3 @@
-use rand::RngExt;
 use nalgebra::Vector2;
 use super::world::Money;
 
@@ -8,6 +7,7 @@ const CATCH_CHANCE: f64 = 0.0;
 pub struct CasinoGame{
     pub pos: Vector2<f32>,
     pub kind: GameType,
+    pub win_chance: f64,
     pub occupied: bool,
 }
 
@@ -16,9 +16,15 @@ pub enum GameType{
     Roulette(RouletteTable),
 }impl GameType{
     fn win_chance(&self) -> f64{
-        match self {
-            GameType::Slots(g) => g.odds as f64 / 100.,
-            GameType::Roulette(g) => g.odds as f64 / 37.0,
+        match self{
+            GameType::Slots(_) => 0.45,
+            GameType::Roulette(_) => 18./37.,
+        }
+    }
+    fn payout(&self, bet: i64) -> i64{
+        match self{
+            GameType::Slots(_) => bet * 2,
+            GameType::Roulette(_) => bet * 2,
         }
     }
 }
@@ -30,14 +36,13 @@ pub enum Outcome{
 }
 
 pub struct SlotMachine{
-    pub odds: u32
 }
 pub struct RouletteTable{
-    pub odds: u32
 }
+
 impl CasinoGame{
     pub fn play(&mut self, bet: Money, cheating: bool) -> Outcome{
-        let mut chance = self.kind.win_chance();
+        let mut chance= self.win_chance;
         if cheating {
             chance += CHEAT_BONUS;
         }
@@ -45,53 +50,25 @@ impl CasinoGame{
             return Outcome::Caught;
         }
 
-        match &mut self.kind{
-            GameType::Slots(machine) => machine.play_slots(bet, cheating),
-            GameType::Roulette(table)=> table.play_roulette(bet, cheating),
+        if rand::random_bool(chance){
+            Outcome::Win(self.kind.payout(bet))
+        }else{
+            Outcome::Lose
         }
+
     }
-    pub fn slots(pos: Vector2<f32>, odds: u32) -> Self{
+    pub fn new(pos: Vector2<f32>, kind: GameType) -> Self{
+        let win_chance = kind.win_chance();
         Self{
             pos: pos,
-            kind: GameType::Slots(SlotMachine{odds}),
-            occupied: false, 
-        }
-    }
-    pub fn roulette(pos: Vector2<f32>, odds: u32) -> Self{
-        Self{
-            pos: pos, 
-            kind: GameType::Roulette(RouletteTable{odds}),
+            kind: kind,
+            win_chance: win_chance,
             occupied: false,
         }
     }
 }
 impl SlotMachine{
-    pub fn play_slots(&mut self, bet: Money, cheating: bool) -> Outcome{
-        let mut rng = rand::rng();
-        let random_number: u32 = rng.random_range(0..100);
-
-        if random_number < self.odds{
-            Outcome::Win(bet * 2)
-        }else{
-            Outcome::Lose
-        }
-    }
 }
 impl RouletteTable{
-    pub fn play_roulette(&mut self, bet: Money, cheating: bool) -> Outcome{
-        let mut rng = rand::rng();
-        let random_number: u32 = rng.random_range(0..36);
-
-        let mut odds = self.odds;
-        if cheating{
-            odds += 10;
-        }
-
-        if random_number < self.odds{
-            Outcome::Win(bet * 2)
-        }else{
-            Outcome::Lose
-        }
-    }
 }
 

@@ -3,7 +3,6 @@ use crate::{
         RenderLayer,
         graphicscontrol::GraphicsControl,
     },
-    utils::IntoGpuMatrix,
 };
 
 use ahash::AHashMap;

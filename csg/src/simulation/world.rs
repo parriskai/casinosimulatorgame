@@ -1,12 +1,10 @@
 use nalgebra::Vector2;
-use wgpu::TextureFormat;
 use crate::graphics::input_mgr::InputManager;
-use crate::graphics::{assets::manager::AssetManager, window::Window};
-use crate::graphics::graphicscontrol::GraphicsControl;
+use crate::graphics::{window::Window};
 use crate::simulation::chunkmanager::ChunkManager;
 use crate::prelude::*;
 use super::npc::{Npc, NpcState, DirectionFacing};
-use super::casino_games::{CasinoGame, GameType, SlotMachine, Outcome};
+use super::casino_games::{CasinoGame, GameType, SlotMachine, RouletteTable,  Outcome};
  
 pub type Money = i64;
 
@@ -33,7 +31,6 @@ const WALLET_MIN: Money = 500;
 const WALLET_MAX: Money = 5_000;
 const SPIN_TIME: f32 = 4.0; //time it takes to play slots
 const WALK_SPEED: f32 = 90.0; 
-const WIN_CHANCE: f32 = 5.0;
 const MIN_BET: i64 = 5;
 const CHEATER_RATE: f64 = 0.10;
 
@@ -46,11 +43,9 @@ impl World{
                 max_npcs: 30,
                 spawn_timer: 0.0,
                 games: vec![
-                    CasinoGame::roulette(Vector2::new(800.0, 200.0), 10),
-                    CasinoGame::slots(Vector2::new(300.0, 200.0), 45),
-                    CasinoGame::slots(Vector2::new(200.0, 200.0), 45),
-                    CasinoGame::slots(Vector2::new(100.0, 200.0), 45),
-                    CasinoGame::slots(Vector2::new(50.0, 200.0), 45),
+                    CasinoGame::new(Vector2::new(800.0, 200.0), GameType::Roulette(RouletteTable {})),
+                    CasinoGame::new(Vector2::new(300.0, 200.0), GameType::Slots(SlotMachine {})),
+                    CasinoGame::new(Vector2::new(200.0, 200.0), GameType::Slots(SlotMachine {})),
                 ],
                 house_money: HOUSE_START_MONEY,
                 reputation: 0.0,
@@ -72,15 +67,18 @@ impl World{
             return;
         }
 
-        let pick= rand::random_range(0..unoccupied_games.len());
-        let game_idx = unoccupied_games[pick];
+        let mut game_idx = None;
+        if !unoccupied_games.is_empty(){
+            let pick= rand::random_range(0..unoccupied_games.len());
+            game_idx = Some(unoccupied_games[pick]);
+        }
 
-        self.games[game_idx].occupied = true;
+        self.games[game_idx.unwrap()].occupied = true;
         let new_npc = Npc{
             pos: self.entrance,
             facing: DirectionFacing::East, 
             wallet: rand::random_range(WALLET_MIN..WALLET_MAX),
-            state: NpcState::WalkingTo{machine: game_idx},
+            state: NpcState::WalkingTo{machine: game_idx.unwrap()},
             game_prefs: vec![1; self.games.len()],
             cheater: rand::random_bool(CHEATER_RATE)
         };
@@ -122,7 +120,7 @@ impl World{
                         npc.state = NpcState::Leaving;
                         continue;
                     }
-                    let bet = rand::random_range(MIN_BET..npc.wallet);
+                    let bet = rand::random_range(MIN_BET..=npc.wallet);
 
                     npc.wallet -= bet;
                     self.house_money += bet as i64;
@@ -135,6 +133,8 @@ impl World{
                         Outcome::Lose => {}
                         Outcome::Caught=>{
                             npc.state = NpcState::Leaving;
+                            self.games[machine].occupied = false;
+                            continue;
                         }
                     }
                     

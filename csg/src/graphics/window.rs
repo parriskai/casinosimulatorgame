@@ -23,7 +23,6 @@ use glfw::{
     WindowEvent
 };
 use super::graphicscontrol::GraphicsControl;
-use nalgebra::Vector2;
 use std::sync::Arc;
 
 
