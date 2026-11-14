@@ -5,8 +5,10 @@ use crate::graphics::{assets::manager::AssetManager, window::Window};
 use crate::graphics::graphicscontrol::GraphicsControl;
 use crate::simulation::chunkmanager::ChunkManager;
 use crate::prelude::*;
-use super::npc::{Npc, NpcState, Money};
+use super::npc::{Npc, NpcState, DirectionFacing};
 use super::casino_games::{CasinoGame, GameType, SlotMachine, Outcome};
+ 
+pub type Money = i64;
 
 pub struct View{
     pub scale: f32,
@@ -33,6 +35,7 @@ const SPIN_TIME: f32 = 4.0; //time it takes to play slots
 const WALK_SPEED: f32 = 90.0; 
 const WIN_CHANCE: f32 = 5.0;
 const MIN_BET: i64 = 5;
+const CHEATER_RATE: f64 = 0.10;
 
 impl World{
     pub fn create(win: &mut Window) -> GResult<World>{
@@ -40,10 +43,10 @@ impl World{
         Ok(
             World{
                 npcs: Vec::new(),
-                max_npcs: 3,
+                max_npcs: 30,
                 spawn_timer: 0.0,
                 games: vec![
-                    CasinoGame::roulette(Vector2::new(800.0, 200.0), 45),
+                    CasinoGame::roulette(Vector2::new(800.0, 200.0), 10),
                     CasinoGame::slots(Vector2::new(300.0, 200.0), 45),
                     CasinoGame::slots(Vector2::new(200.0, 200.0), 45),
                     CasinoGame::slots(Vector2::new(100.0, 200.0), 45),
@@ -59,14 +62,28 @@ impl World{
     } 
 
     pub fn spawn_npc(&mut self){
+        let mut unoccupied_games = Vec::new();
+        for (idx, game) in self.games.iter().enumerate(){
+            if !game.occupied{
+                unoccupied_games.push(idx) 
+            }
+        }
+        if unoccupied_games.len() <= 0{
+            return;
+        }
 
+        let pick= rand::random_range(0..unoccupied_games.len());
+        let game_idx = unoccupied_games[pick];
+
+        self.games[game_idx].occupied = true;
         let new_npc = Npc{
             pos: self.entrance,
+            facing: DirectionFacing::East, 
             wallet: rand::random_range(WALLET_MIN..WALLET_MAX),
-            state: NpcState::WalkingTo{machine: rand::random_range(0..self.games.len())},
-            machine_prefs: vec![1; self.games.len()]
+            state: NpcState::WalkingTo{machine: game_idx},
+            game_prefs: vec![1; self.games.len()],
+            cheater: rand::random_bool(CHEATER_RATE)
         };
-
         self.npcs.push(new_npc);
     }
 
@@ -85,17 +102,23 @@ impl World{
             match npc.state{
                 NpcState::WalkingTo{machine} => {
                     let target = self.games[machine].pos;
+                    let diff = target - npc.pos;
+                    npc.facing = DirectionFacing::from_diff(diff);
+
                     if move_toward(&mut npc.pos, target, dt * WALK_SPEED){
                         npc.state = NpcState::Playing{machine, timer: 0.0};
                     }
                 }
                 NpcState::Playing{machine, timer} => {
+                    npc.facing = DirectionFacing::North;
+
                     let timer = timer + dt;
                     if timer < SPIN_TIME {
                         npc.state = NpcState::Playing{machine, timer};
                         continue;
                     }
                     if npc.wallet < MIN_BET{
+                        self.games[machine].occupied = false;
                         npc.state = NpcState::Leaving;
                         continue;
                     }
@@ -104,17 +127,20 @@ impl World{
                     npc.wallet -= bet;
                     self.house_money += bet as i64;
 
-                    match self.games[machine].play(bet){
+                    match self.games[machine].play(bet, npc.cheater){
                         Outcome::Win(amount) => {
                             npc.wallet += amount;
                             self.house_money -= amount;
                         }
                         Outcome::Lose => {}
+                        Outcome::Caught=>{
+                            npc.state = NpcState::Leaving;
+                        }
                     }
                     
                     npc.state = NpcState::Playing{machine, timer: 0.0}
                 }
-                NpcState::Leaving => {
+                NpcState::Leaving=> {
                     let target = self.entrance;
                     if move_toward(&mut npc.pos, target, dt * WALK_SPEED){
                         npc.state = NpcState::Gone;

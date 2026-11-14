@@ -60,6 +60,7 @@ pub struct FontTextureAtlas{
     }
 }
 
+#[derive(Clone)]
 pub struct Font{
     atlas: AssetKey<GpuTexture>,
     mapping: HashMap<char, AtlasGlyph>,

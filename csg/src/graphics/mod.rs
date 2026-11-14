@@ -11,6 +11,8 @@ pub mod window;
 pub mod sprite;
 pub mod box_bg;
 pub mod assets;
+pub mod hud;
+pub mod shop;
 
 use bytemuck::{
     Pod,
@@ -46,6 +48,8 @@ pub enum RenderLayer{
     Clear,
     Tile,
     Sprites,
+    Hud,
+    HudText,
     /// Debug layer, rendered above everything else
     Debug,
 }
