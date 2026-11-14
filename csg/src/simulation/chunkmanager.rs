@@ -9,7 +9,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use bytemuck::{Pod, Zeroable};
-use nalgebra::{Matrix4, Vector2, Vector3};
+use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
 use serde::Deserialize;
 use strum::EnumCount;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, PipelineLayout, RenderPass, RenderPipeline, ShaderModule, TextureFormat, util::DeviceExt};
@@ -337,8 +337,6 @@ pub struct ChunkManager {
     uv_buffer: Buffer,
 
     bind_group: BindGroup,
-
-    center: Vector2<f32>
 } impl ChunkManager{
     pub fn create(gc: GraphicsControl, sfmt: TextureFormat, asset_mgr: &mut AssetManager) -> GResult<Self>{
         let tileset_json: TileSetJson = serde_json::from_str(
@@ -352,8 +350,7 @@ pub struct ChunkManager {
         let vertex_buffer = Self::vertex_buffer(&gc);
         let index_buffer = Self::index_buffer(&gc);
 
-        let center = Vector2::new(CHUNK_SIZE as f32 / 2., CHUNK_SIZE as f32 / 2.);
-        let transform = Self::calculate_world_to_cvv(&gc, tileset_json.size.clone(), center.clone());
+        let transform = Matrix4::identity(); // starting tranfsorm
         let transform_buffer = Self::transform_buffer(&gc, &transform);
 
         let uv_list = tileset_json.create_uv_list();
@@ -381,7 +378,6 @@ pub struct ChunkManager {
                 uv_buffer,
 
                 bind_group,
-                center
             }
         )
     }
@@ -626,42 +622,12 @@ pub struct ChunkManager {
         )
     }
 
-    fn calculate_world_to_cvv(gc: &GraphicsControl, size: [f32; 2], center: Vector2<f32>) -> Matrix4<f32> {
-    let dim = gc.get_dim();
+    pub fn set_transform(&mut self, view_matrix: &Matrix4<f32>){
+        let tz = RenderLayer::Tile as i32 as f32; 
+        let mut shift = Matrix4::identity();
+        shift.set_column(3, &Vector4::new(0., 0., tz, 1.));
 
-    let world_px = CHUNK_SIZE as f32 * size[0];
-    let screen = Vector2::new(dim.0 as f32, dim.1 as f32);
-    let sx = screen.x / world_px;
-    let sy = screen.y / world_px;
-
-    let contain = sx.min(sy);
-    let scale = contain;
-
-    // Number of tile pixels visible in each direction.
-    let visible_pixels = screen / scale;
-
-    // Convert screen pixels to tile/world units.
-    let visible_world = visible_pixels.component_div(&Vector2::from(size));
-
-    let half_world = visible_world / 2.0;
-
-    let min = center - half_world;
-    let max = center + half_world;
-
-    let tz = RenderLayer::Tile as u8 as f32;
-    let rl_max = RenderLayer::COUNT as f32;
-
-
-    coordinate_transform(
-        vec2_to_vec3(min, 0.0),
-        vec2_to_vec3(max, 1.0),
-        Vector3::new(-1.0, 1.0, 1.0 - tz / rl_max),
-        Vector3::new(1.0, -1.0, 1.0 - (tz + 1.0) / rl_max),
-    )
-}
-
-    pub fn reload_transform(&mut self){
-        let transform = Self::calculate_world_to_cvv(&self.gc, self.tileset_json.size.clone(),  self.center.clone());
+        let transform = view_matrix * shift; 
         self.gc.queue.write_buffer(&self.transform_buffer, 0, bytemuck::cast_slice(&transform.into_gmat()));
     }
 

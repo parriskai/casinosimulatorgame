@@ -1,16 +1,58 @@
-use nalgebra::Vector2;
+use nalgebra::{Matrix4, Vector2, Vector3};
 use crate::graphics::input_mgr::InputManager;
-use crate::graphics::{window::Window};
-use crate::simulation::chunkmanager::ChunkManager;
+use crate::graphics::{window::Window, RenderLayer};
+use crate::utils::{vec2_to_vec3, coordinate_transform};
+use crate::simulation::chunkmanager::{ChunkManager, CHUNK_SIZE};
 use crate::prelude::*;
 use super::npc::{Npc, NpcState, DirectionFacing};
 use super::casino_games::{CasinoGame, GameType, SlotMachine, RouletteTable,  Outcome};
+use strum::EnumCount;
+
+
+const HOUSE_START_MONEY: Money = 3000;
+const NPC_SPAWN_INTERVAL: f32 = 3.0;
+const WALLET_MIN: Money = 500; 
+const WALLET_MAX: Money = 5_000;
+const SPIN_TIME: f32 = 4.0; //time it takes to play slots
+const WALK_SPEED: f32 = 90.0; 
+const MIN_BET: i64 = 5;
+const CHEATER_RATE: f64 = 0.10;
  
+pub const TILE_SIZE: f32 = 64.;
 pub type Money = i64;
 
 pub struct View{
     pub scale: f32,
     pub center: Vector2<f32>
+}impl View{
+    pub fn world_to_cvv(&self, screen: (u32, u32)) -> Matrix4<f32>{
+        let screen = Vector2::new(screen.0 as f32, screen.1 as f32);
+
+        let world_px = CHUNK_SIZE as f32 * TILE_SIZE; 
+        let sx = screen.x / world_px;
+        let sy = screen.y / world_px;
+
+        let contain = sx.min(sy);
+        let scale = contain;
+
+        // Number of tile pixels visible in each direction.
+        let visible_pixels = screen / scale;
+
+        // Convert screen pixels to tile/world units.
+        let visible_world = visible_pixels / TILE_SIZE;
+
+        let half_world = visible_world / 2.0;
+
+        let min = self.center - half_world;
+        let max = self.center + half_world;
+
+        coordinate_transform(
+            vec2_to_vec3(min, 0.0),
+            vec2_to_vec3(max, RenderLayer::COUNT as f32),
+            Vector3::new(-1., 1., 1.),
+            Vector3::new(1., -1., 0.)
+        )
+    }
 }
 
 pub struct World{
@@ -25,14 +67,6 @@ pub struct World{
     pub view: View,
 }
 
-const HOUSE_START_MONEY: Money = 3000;
-const NPC_SPAWN_INTERVAL: f32 = 3.0;
-const WALLET_MIN: Money = 500; 
-const WALLET_MAX: Money = 5_000;
-const SPIN_TIME: f32 = 4.0; //time it takes to play slots
-const WALK_SPEED: f32 = 90.0; 
-const MIN_BET: i64 = 5;
-const CHEATER_RATE: f64 = 0.10;
 
 impl World{
     pub fn create(win: &mut Window) -> GResult<World>{
@@ -85,9 +119,9 @@ impl World{
         self.npcs.push(new_npc);
     }
 
-    pub fn update(&mut self, im: &InputManager){
+    pub fn update(&mut self, im: &InputManager, screen: (u32, u32)){
         if im.should_reload_fb{
-            self.grid.reload_transform();
+            self.grid.set_transform(&self.view.world_to_cvv(screen));
         }
         let dt = im.get_delta_time() as f32;
         self.spawn_timer += dt;

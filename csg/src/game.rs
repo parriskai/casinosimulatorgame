@@ -45,7 +45,7 @@ pub struct Game{
         while !self.window.should_close(){
             self.window.update();
 
-            self.world.update(&self.window.renderer.input_manager);
+            self.world.update(&self.window.renderer.input_manager, self.window.renderer.gc.get_dim());
 
             self.window.render(&mut self.world);
 
