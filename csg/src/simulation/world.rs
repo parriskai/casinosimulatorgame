@@ -22,7 +22,6 @@ pub const TILE_SIZE: f32 = 64.;
 pub type Money = i64;
 
 pub struct View{
-    pub scale: f32,
     pub center: Vector2<f32>
 }impl View{
     pub fn world_to_cvv(&self, screen: (u32, u32)) -> Matrix4<f32>{
@@ -71,8 +70,7 @@ pub struct World{
 impl World{
     pub fn create(win: &mut Window) -> GResult<World>{
         let grid = ChunkManager::create(win.renderer.gc.clone(), win.surface_format.clone(), &mut win.renderer.asset_manager)?;
-        Ok(
-            World{
+        let mut world = World{
                 npcs: Vec::new(),
                 max_npcs: 30,
                 spawn_timer: 0.0,
@@ -84,10 +82,12 @@ impl World{
                 house_money: HOUSE_START_MONEY,
                 reputation: 0.0,
                 entrance: Vector2::new(0.0, 0.0),
-                view: View { scale: 0., center: Vector2::zeros()},
+                view: View { center: Vector2::new(CHUNK_SIZE as f32 / 2., CHUNK_SIZE as f32 / 2.)},
                 grid
-            }
-        )
+            };
+        let camera = world.view.world_to_cvv(win.renderer.gc.get_dim());
+        world.grid.set_transform(&camera);
+        Ok(world)
     } 
 
     pub fn spawn_npc(&mut self){
