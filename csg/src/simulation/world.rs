@@ -13,10 +13,10 @@ const HOUSE_START_MONEY: Money = 3000;
 const NPC_SPAWN_INTERVAL: f32 = 3.0;
 const WALLET_MIN: Money = 500; 
 const WALLET_MAX: Money = 5_000;
-const SPIN_TIME: f32 = 4.0; //time it takes to play slots
 const WALK_SPEED: f32 = 90.0; 
 const MIN_BET: i64 = 5;
 const CHEATER_RATE: f64 = 0.10;
+const SUSPICION_PER_PLAY: f64 = 0.01;
  
 pub const TILE_SIZE: f32 = 64.;
 pub type Money = i64;
@@ -114,7 +114,9 @@ impl World{
             wallet: rand::random_range(WALLET_MIN..WALLET_MAX),
             state: NpcState::WalkingTo{machine: game_idx.unwrap()},
             game_prefs: vec![1; self.games.len()],
-            cheater: rand::random_bool(CHEATER_RATE)
+            cheater: rand::random_bool(CHEATER_RATE),
+            suspicion: 0.,
+            winnings: 0,
         };
         self.npcs.push(new_npc);
     }
@@ -145,7 +147,7 @@ impl World{
                     npc.facing = DirectionFacing::North;
 
                     let timer = timer + dt;
-                    if timer < SPIN_TIME {
+                    if timer < self.games[machine].time_to_play{
                         npc.state = NpcState::Playing{machine, timer};
                         continue;
                     }
@@ -155,6 +157,7 @@ impl World{
                         continue;
                     }
                     let bet = rand::random_range(MIN_BET..=npc.wallet);
+                    let mut win_streak = 0;
 
                     npc.wallet -= bet;
                     self.house_money += bet as i64;
@@ -163,9 +166,13 @@ impl World{
                         Outcome::Win(amount) => {
                             npc.wallet += amount;
                             self.house_money -= amount;
+                            win_streak += 1;
                         }
-                        Outcome::Lose => {}
+                        Outcome::Lose => {
+                            win_streak = 0;
+                        }
                     }
+                    if npc.cheater{npc.suspicion += SUSPICION_PER_PLAY * win_streak as f64;}
                     
                     npc.state = NpcState::Playing{machine, timer: 0.0}
                 }

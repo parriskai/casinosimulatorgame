@@ -8,6 +8,7 @@ pub struct CasinoGame{
     pub kind: GameType,
     pub win_chance: f64,
     pub occupied: bool,
+    pub time_to_play: f32,
 }
 
 pub enum GameType{
@@ -64,6 +65,7 @@ impl CasinoGame{
             kind: kind,
             win_chance: win_chance,
             occupied: false,
+            time_to_play: 3.0,
         }
     }
 }

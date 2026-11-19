@@ -30,11 +30,16 @@ pub enum NpcState{
 } 
 
 pub struct Npc{
-    pub pos: Vector2<f32>,
+    pub pos: Vector2<f32>, 
     pub facing: DirectionFacing,
-    pub wallet: Money,
+    pub wallet: Money,              //money they enter casino with
     pub state: NpcState,
     pub game_prefs: Vec<usize>,
-    pub cheater: bool,
+    pub cheater: bool,              
+    pub suspicion: f64,             // if cheating, goes up small amount every play. goes up more
+                                    // during a winning streak for cheating and not cheating
+                                    // players.
+    pub winnings: Money             // Amount of money won from casino, so know how much to take
+                                    // back if they are caught. 
 }
 
