@@ -2,7 +2,6 @@ use nalgebra::Vector2;
 use super::world::Money;
 
 const CHEAT_BONUS: f64 = 0.15;
-const CATCH_CHANCE: f64 = 0.0;
 
 pub struct CasinoGame{
     pub pos: Vector2<f32>,
@@ -21,6 +20,12 @@ pub enum GameType{
             GameType::Roulette(_) => 18./37.,
         }
     }
+    fn cheat_bonus(&self) -> f64{
+        match self{
+            GameType::Slots(_) => 0.15,
+            GameType::Roulette(_) => 0.10,
+        }
+    }
     fn payout(&self, bet: i64) -> i64{
         match self{
             GameType::Slots(_) => bet * 2,
@@ -32,7 +37,6 @@ pub enum GameType{
 pub enum Outcome{
     Win(Money),
     Lose,
-    Caught,
 }
 
 pub struct SlotMachine{
@@ -44,12 +48,8 @@ impl CasinoGame{
     pub fn play(&mut self, bet: Money, cheating: bool) -> Outcome{
         let mut chance= self.win_chance;
         if cheating {
-            chance += CHEAT_BONUS;
+            chance += self.kind.win_chance();
         }
-        if rand::random_bool(CATCH_CHANCE){
-            return Outcome::Caught;
-        }
-
         if rand::random_bool(chance){
             Outcome::Win(self.kind.payout(bet))
         }else{

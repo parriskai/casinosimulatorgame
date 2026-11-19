@@ -165,11 +165,6 @@ impl World{
                             self.house_money -= amount;
                         }
                         Outcome::Lose => {}
-                        Outcome::Caught=>{
-                            npc.state = NpcState::Leaving;
-                            self.games[machine].occupied = false;
-                            continue;
-                        }
                     }
                     
                     npc.state = NpcState::Playing{machine, timer: 0.0}
